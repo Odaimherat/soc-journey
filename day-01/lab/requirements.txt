@@ -1,0 +1,6 @@
+# Day 01 — SOC Analyst Journey
+# No external dependencies needed! All scripts use Python standard library only.
+# Python 3.8+ required
+
+# Optional: for enhanced output
+colorama>=0.4.6  # Windows color support (auto-detected, not required on Linux/Mac)
