@@ -1,0 +1,16 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.env
+venv/
+.venv/
+
+# Generated lab artifacts (runtime output)
+ingested_logs.json
+correlated_alerts.json
+triage_tickets.json
+
+# OS
+.DS_Store
+Thumbs.db
