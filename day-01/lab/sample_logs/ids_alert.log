@@ -1,0 +1,7 @@
+[2024-01-15 08:02:11] [ALERT] [Priority: 1] {TCP} 10.0.0.55:3389 -> 192.168.1.200:3389 [SID:1001] RDP Brute Force Attempt
+[2024-01-15 08:04:01] [ALERT] [Priority: 2] {TCP} 185.220.101.5:443 -> 192.168.1.10:80 [SID:2044] Known C2 IP Contact Attempt
+[2024-01-15 08:06:55] [ALERT] [Priority: 1] {TCP} 10.0.0.99:4444 -> 192.168.1.50:22 [SID:3021] Metasploit Default Port Detected
+[2024-01-15 08:08:19] [ALERT] [Priority: 2] {ICMP} 192.168.1.200 -> 10.10.10.1 [SID:4019] Network Port Scan Detected
+[2024-01-15 08:10:30] [ALERT] [Priority: 1] {TCP} 185.234.218.48 -> 192.168.1.1:22 [SID:5003] SSH Brute Force from Known Bad IP
+[2024-01-15 08:15:00] [WARNING] [Priority: 3] {UDP} 192.168.1.200:137 -> Broadcast [SID:6010] NetBIOS Enumeration
+[2024-01-15 08:22:11] [ALERT] [Priority: 1] {TCP} 192.168.1.55 -> 10.0.0.1:445 [SID:7777] SMB Exploit Attempt (EternalBlue Pattern)
