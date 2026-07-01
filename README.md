@@ -13,17 +13,11 @@ soc-journey/
 ├── day-01/
 │   ├── README.md
 │   ├── lab/
-│   │   ├── soc_workflow_demo.py
-│   │   ├── soc_log_simulator.py
-│   │   ├── event_correlator.py
-│   │   ├── alert_triage.py
-│   │   ├── requirements.txt
-│   │   └── sample_logs/
-│   │       ├── firewall.log
-│   │       ├── ids_alert.log
-│   │       └── endpoint.log
 │   └── docs/
-│       └── references.md
+├── day-02/
+│   ├── README.md
+│   ├── lab/
+│   └── docs/
 └── ...
 ```
 
@@ -34,6 +28,7 @@ soc-journey/
 | Day | Topic | Lab |
 |-----|-------|-----|
 | 01  | Security Operations and Management — SOC Foundations | [Day 01](day-01/) |
+| 02  | SOC Processes, Models, Maturity, KPIs and Implementation | [Day 02](day-02/) |
 
 ---
 
@@ -41,8 +36,8 @@ soc-journey/
 
 ```bash
 git clone https://github.com/Odaimherat/soc-journey
-cd soc-journey/day-01/lab
-python soc_workflow_demo.py
+cd soc-journey/day-02/lab
+python soc_maturity_assessor.py
 ```
 
 Requirements: Python 3.8 or higher. No external packages needed.
