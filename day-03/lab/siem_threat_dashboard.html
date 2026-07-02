@@ -1,0 +1,948 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SIEM Threat Intelligence Dashboard</title>
+<style>
+  :root {
+    --bg:       #0a0e1a;
+    --panel:    #0f1525;
+    --border:   #1e2d4a;
+    --accent:   #00d4ff;
+    --red:      #ff4444;
+    --orange:   #ff8800;
+    --yellow:   #ffd700;
+    --green:    #00ff88;
+    --purple:   #a855f7;
+    --text:     #c8d6ef;
+    --dim:      #5a6a8a;
+    --font:     'Courier New', monospace;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font);
+    font-size: 13px;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── Top bar ── */
+  .topbar {
+    background: var(--panel);
+    border-bottom: 1px solid var(--border);
+    padding: 10px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .topbar-left { display: flex; align-items: center; gap: 16px; }
+  .logo {
+    color: var(--accent);
+    font-size: 18px;
+    font-weight: bold;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+  }
+  .logo span { color: var(--red); }
+  .status-pill {
+    background: rgba(0,255,136,0.15);
+    border: 1px solid var(--green);
+    color: var(--green);
+    padding: 2px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse { 0%,100% { opacity:1 } 50% { opacity:0.6 } }
+
+  .topbar-right { display: flex; align-items: center; gap: 20px; color: var(--dim); font-size: 11px; }
+  #clock { color: var(--accent); font-size: 13px; }
+
+  /* ── Stat cards ── */
+  .stat-row {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 8px;
+    padding: 12px 16px;
+  }
+  .stat-card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 12px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.2s;
+  }
+  .stat-card:hover { border-color: var(--accent); }
+  .stat-card .val {
+    font-size: 26px;
+    font-weight: bold;
+    line-height: 1;
+  }
+  .stat-card .lbl {
+    font-size: 10px;
+    color: var(--dim);
+    margin-top: 4px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+  .c-red    { color: var(--red); }
+  .c-orange { color: var(--orange); }
+  .c-yellow { color: var(--yellow); }
+  .c-green  { color: var(--green); }
+  .c-accent { color: var(--accent); }
+  .c-purple { color: var(--purple); }
+
+  /* ── Main grid ── */
+  .main-grid {
+    display: grid;
+    grid-template-columns: 1fr 380px;
+    gap: 10px;
+    padding: 0 16px 16px;
+    min-height: calc(100vh - 160px);
+  }
+
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+
+  .panel-header {
+    background: rgba(0,212,255,0.06);
+    border-bottom: 1px solid var(--border);
+    padding: 10px 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .panel-title {
+    color: var(--accent);
+    font-size: 11px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+  .panel-badge {
+    background: var(--red);
+    color: white;
+    border-radius: 10px;
+    padding: 1px 8px;
+    font-size: 10px;
+  }
+
+  /* ── Alert feed ── */
+  .alert-feed { overflow-y: auto; max-height: 420px; }
+
+  .alert-item {
+    border-bottom: 1px solid rgba(30,45,74,0.7);
+    padding: 10px 14px;
+    display: grid;
+    grid-template-columns: 70px 80px 1fr 90px;
+    gap: 10px;
+    align-items: center;
+    cursor: pointer;
+    transition: background 0.15s;
+    animation: slidein 0.3s ease;
+  }
+  @keyframes slidein { from { opacity:0; transform: translateX(-10px); } to { opacity:1; transform:none; } }
+  .alert-item:hover { background: rgba(0,212,255,0.04); }
+
+  .sev-badge {
+    font-size: 10px;
+    font-weight: bold;
+    padding: 2px 6px;
+    border-radius: 3px;
+    text-align: center;
+  }
+  .sev-CRITICAL { background: rgba(255,68,68,0.25); color: var(--red); border: 1px solid var(--red); }
+  .sev-HIGH     { background: rgba(255,136,0,0.2);  color: var(--orange); border: 1px solid var(--orange); }
+  .sev-MEDIUM   { background: rgba(255,215,0,0.15); color: var(--yellow); border: 1px solid var(--yellow); }
+  .sev-LOW      { background: rgba(0,212,255,0.1);  color: var(--accent); border: 1px solid var(--accent); }
+
+  .alert-type { color: var(--dim); font-size: 11px; }
+  .alert-desc { color: var(--text); }
+  .alert-desc span { color: var(--accent); }
+  .alert-time { color: var(--dim); font-size: 11px; text-align: right; }
+
+  /* ── Attack type tabs ── */
+  .tab-row {
+    display: flex;
+    gap: 4px;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+    overflow-x: auto;
+  }
+  .tab {
+    padding: 4px 10px;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+    cursor: pointer;
+    font-size: 11px;
+    color: var(--dim);
+    white-space: nowrap;
+    transition: all 0.2s;
+  }
+  .tab:hover, .tab.active {
+    background: rgba(0,212,255,0.1);
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  /* ── Attack detail pane ── */
+  .attack-detail { padding: 14px; }
+  .attack-detail h3 { color: var(--accent); margin-bottom: 8px; font-size: 14px; }
+  .attack-detail p { color: var(--text); line-height: 1.6; margin-bottom: 10px; font-size: 12px; }
+
+  .ioc-table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+  .ioc-table th {
+    text-align: left;
+    color: var(--dim);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    padding: 4px 8px;
+    border-bottom: 1px solid var(--border);
+  }
+  .ioc-table td {
+    padding: 6px 8px;
+    font-size: 11px;
+    border-bottom: 1px solid rgba(30,45,74,0.5);
+  }
+  .ioc-table tr:hover td { background: rgba(0,212,255,0.04); }
+  .ioc-val { color: var(--yellow); font-family: monospace; }
+  .ioc-type { color: var(--purple); font-size: 10px; }
+
+  /* ── Right column ── */
+  .right-col { display: flex; flex-direction: column; gap: 10px; }
+
+  /* ── Threat map (SVG) ── */
+  .threat-map-wrap { padding: 10px; }
+  .threat-map-wrap svg { width: 100%; height: 160px; }
+
+  /* ── Kill chain ── */
+  .kill-chain-wrap { padding: 12px 14px; }
+  .chain-stages {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-top: 8px;
+  }
+  .chain-stage {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 7px 10px;
+    border-radius: 5px;
+    border: 1px solid var(--border);
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+  }
+  .chain-stage.active {
+    border-color: var(--accent);
+    background: rgba(0,212,255,0.06);
+  }
+  .chain-stage.detected { border-color: var(--red); background: rgba(255,68,68,0.07); }
+  .chain-num {
+    width: 22px; height: 22px;
+    border-radius: 50%;
+    background: var(--border);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px;
+    color: var(--dim);
+    flex-shrink: 0;
+  }
+  .chain-stage.active   .chain-num { background: var(--accent); color: var(--bg); }
+  .chain-stage.detected .chain-num { background: var(--red); color: white; }
+  .chain-info { flex: 1; }
+  .chain-name { font-size: 12px; }
+  .chain-stage.active   .chain-name { color: var(--accent); }
+  .chain-stage.detected .chain-name { color: var(--red); }
+  .chain-desc { font-size: 10px; color: var(--dim); margin-top: 1px; }
+  .chain-tag {
+    font-size: 9px;
+    padding: 2px 6px;
+    border-radius: 3px;
+  }
+  .tag-detected { background: rgba(255,68,68,0.2); color: var(--red); }
+  .tag-active   { background: rgba(0,212,255,0.2); color: var(--accent); }
+  .tag-pending  { background: rgba(90,106,138,0.2); color: var(--dim); }
+
+  /* ── TTP panel ── */
+  .ttp-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+    padding: 10px 14px;
+  }
+  .ttp-card {
+    background: rgba(0,212,255,0.04);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    padding: 8px;
+    cursor: pointer;
+    transition: border-color 0.2s;
+  }
+  .ttp-card:hover { border-color: var(--purple); }
+  .ttp-id { color: var(--purple); font-size: 10px; }
+  .ttp-name { color: var(--text); font-size: 11px; margin-top: 2px; }
+  .ttp-count { color: var(--dim); font-size: 10px; margin-top: 2px; }
+
+  /* ── Controls ── */
+  .controls {
+    padding: 10px 16px;
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    border-top: 1px solid var(--border);
+  }
+  .btn {
+    padding: 6px 14px;
+    border-radius: 4px;
+    border: 1px solid var(--accent);
+    background: rgba(0,212,255,0.1);
+    color: var(--accent);
+    cursor: pointer;
+    font-family: var(--font);
+    font-size: 11px;
+    transition: all 0.2s;
+  }
+  .btn:hover { background: rgba(0,212,255,0.2); }
+  .btn.danger { border-color: var(--red); background: rgba(255,68,68,0.1); color: var(--red); }
+  .btn.danger:hover { background: rgba(255,68,68,0.2); }
+  .btn.success { border-color: var(--green); background: rgba(0,255,136,0.1); color: var(--green); }
+
+  select {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 5px 8px;
+    border-radius: 4px;
+    font-family: var(--font);
+    font-size: 11px;
+  }
+
+  /* ── Incident Modal ── */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.75);
+    z-index: 200;
+    align-items: center;
+    justify-content: center;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: var(--panel);
+    border: 1px solid var(--accent);
+    border-radius: 10px;
+    width: 560px;
+    max-height: 80vh;
+    overflow-y: auto;
+  }
+  .modal-header {
+    background: rgba(0,212,255,0.08);
+    border-bottom: 1px solid var(--border);
+    padding: 14px 18px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .modal-header h2 { color: var(--accent); font-size: 14px; }
+  .modal-close { color: var(--dim); cursor: pointer; font-size: 18px; }
+  .modal-close:hover { color: var(--red); }
+  .modal-body { padding: 18px; }
+  .modal-row { display: flex; gap: 10px; margin-bottom: 10px; }
+  .modal-field { flex: 1; }
+  .modal-field label { font-size: 10px; color: var(--dim); text-transform: uppercase; letter-spacing: 1px; display: block; margin-bottom: 4px; }
+  .modal-field .val { font-size: 12px; color: var(--text); padding: 6px 8px; background: var(--bg); border: 1px solid var(--border); border-radius: 4px; }
+  .modal-field .val.red { color: var(--red); }
+  .modal-field .val.yellow { color: var(--yellow); }
+  .timeline { margin-top: 12px; }
+  .timeline-item { display: flex; gap: 12px; padding: 8px 0; border-left: 2px solid var(--border); padding-left: 14px; position: relative; margin-left: 6px; }
+  .timeline-item::before { content:''; position:absolute; left:-5px; top:12px; width:8px; height:8px; border-radius:50%; background:var(--accent); }
+  .tl-time { color: var(--dim); font-size: 10px; min-width: 70px; }
+  .tl-text { font-size: 11px; }
+  .modal-actions { display: flex; gap: 8px; margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--border); }
+
+  /* ── Scrollbar ── */
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  /* ── Bottom row ── */
+  .bottom-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    padding: 0 16px 16px;
+  }
+
+  .log-stream {
+    font-size: 11px;
+    overflow-y: auto;
+    max-height: 180px;
+    padding: 10px 14px;
+    font-family: monospace;
+  }
+  .log-line { padding: 2px 0; border-bottom: 1px solid rgba(30,45,74,0.3); }
+  .log-line .ts { color: var(--dim); }
+  .log-line .src { color: var(--accent); }
+  .log-line .evt { color: var(--yellow); }
+  .log-line .info { color: var(--text); }
+
+  .bar-chart { padding: 10px 14px; }
+  .bar-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+  .bar-label { width: 90px; font-size: 11px; color: var(--dim); text-align: right; }
+  .bar-track { flex: 1; background: var(--border); border-radius: 2px; height: 14px; overflow: hidden; }
+  .bar-fill { height: 100%; border-radius: 2px; transition: width 1s ease; display: flex; align-items: center; padding-left: 6px; font-size: 10px; font-weight: bold; }
+  .bar-val { font-size: 11px; color: var(--dim); min-width: 28px; }
+</style>
+</head>
+<body>
+
+<!-- Top bar -->
+<div class="topbar">
+  <div class="topbar-left">
+    <div class="logo">SIEM<span>///</span>SOC</div>
+    <div class="status-pill">LIVE MONITORING</div>
+  </div>
+  <div class="topbar-right">
+    <span>ANALYST: SOC-L1-01</span>
+    <span id="clock"></span>
+  </div>
+</div>
+
+<!-- Stat cards -->
+<div class="stat-row">
+  <div class="stat-card" onclick="filterAlerts('CRITICAL')">
+    <div class="val c-red" id="cnt-critical">0</div>
+    <div class="lbl">Critical</div>
+  </div>
+  <div class="stat-card" onclick="filterAlerts('HIGH')">
+    <div class="val c-orange" id="cnt-high">0</div>
+    <div class="lbl">High</div>
+  </div>
+  <div class="stat-card" onclick="filterAlerts('MEDIUM')">
+    <div class="val c-yellow" id="cnt-medium">0</div>
+    <div class="lbl">Medium</div>
+  </div>
+  <div class="stat-card" onclick="filterAlerts('ALL')">
+    <div class="val c-accent" id="cnt-total">0</div>
+    <div class="lbl">Total Events</div>
+  </div>
+  <div class="stat-card">
+    <div class="val c-green" id="cnt-closed">0</div>
+    <div class="lbl">Closed</div>
+  </div>
+  <div class="stat-card">
+    <div class="val c-purple" id="cnt-sources">4</div>
+    <div class="lbl">Log Sources</div>
+  </div>
+</div>
+
+<!-- Main grid -->
+<div class="main-grid">
+
+  <!-- Left: alert feed + attack details -->
+  <div style="display:flex; flex-direction:column; gap:10px;">
+
+    <!-- Alert feed -->
+    <div class="panel">
+      <div class="panel-header">
+        <span class="panel-title">Live Alert Feed</span>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <select id="sev-filter" onchange="filterAlerts(this.value)">
+            <option value="ALL">All Severities</option>
+            <option value="CRITICAL">Critical</option>
+            <option value="HIGH">High</option>
+            <option value="MEDIUM">Medium</option>
+            <option value="LOW">Low</option>
+          </select>
+          <span class="panel-badge" id="feed-count">0</span>
+        </div>
+      </div>
+      <div class="alert-feed" id="alert-feed"></div>
+    </div>
+
+    <!-- Attack detail tabs -->
+    <div class="panel">
+      <div class="panel-header">
+        <span class="panel-title">Attack Type Reference — IoC Signatures</span>
+      </div>
+      <div class="tab-row" id="attack-tabs"></div>
+      <div class="attack-detail" id="attack-detail"></div>
+    </div>
+
+  </div>
+
+  <!-- Right column -->
+  <div class="right-col">
+
+    <!-- Kill chain tracker -->
+    <div class="panel">
+      <div class="panel-header">
+        <span class="panel-title">Cyber Kill Chain Tracker</span>
+        <span style="font-size:10px;color:var(--dim);">Active Attack Path</span>
+      </div>
+      <div class="kill-chain-wrap">
+        <div class="chain-stages" id="kill-chain"></div>
+      </div>
+    </div>
+
+    <!-- MITRE TTPs -->
+    <div class="panel">
+      <div class="panel-header">
+        <span class="panel-title">MITRE ATT&CK — Detected TTPs</span>
+      </div>
+      <div class="ttp-grid" id="ttp-grid"></div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Bottom row -->
+<div class="bottom-row">
+
+  <!-- Raw log stream -->
+  <div class="panel">
+    <div class="panel-header">
+      <span class="panel-title">Raw Log Stream</span>
+      <span style="font-size:10px;color:var(--green);">LIVE</span>
+    </div>
+    <div class="log-stream" id="log-stream"></div>
+  </div>
+
+  <!-- Attack vector bar chart -->
+  <div class="panel">
+    <div class="panel-header">
+      <span class="panel-title">Attack Vector Distribution</span>
+    </div>
+    <div class="bar-chart" id="bar-chart"></div>
+  </div>
+
+</div>
+
+<!-- Controls -->
+<div class="controls">
+  <button class="btn" onclick="toggleFeed()">Pause Feed</button>
+  <button class="btn danger" onclick="clearAlerts()">Clear Queue</button>
+  <button class="btn success" onclick="openIncident()">Create Incident Ticket</button>
+  <span style="color:var(--dim);font-size:11px;margin-left:auto;">Events/min: <span id="epm" style="color:var(--accent)">0</span></span>
+</div>
+
+<!-- Incident Modal -->
+<div class="modal-overlay" id="modal" onclick="closeModal(event)">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>New Incident Ticket</h2>
+      <span class="modal-close" onclick="document.getElementById('modal').classList.remove('open')">✕</span>
+    </div>
+    <div class="modal-body" id="modal-body"></div>
+  </div>
+</div>
+
+<script>
+// ── Data ────────────────────────────────────────────────────────────────────
+
+const ATTACKS = {
+  "Reconnaissance": {
+    desc: "Attacker gathers network information before launching an attack. Includes port scanning, DNS footprinting, WHOIS queries, and ping sweeping to map the target environment.",
+    iocs: [
+      { type: "Network", val: "Sequential port scans (Nmap SYN scan pattern)", risk: "HIGH" },
+      { type: "DNS",     val: "Unusual DNS zone transfer requests (AXFR)", risk: "HIGH" },
+      { type: "ICMP",   val: "ICMP sweep across /24 subnet", risk: "MEDIUM" },
+      { type: "Log",    val: "Multiple 'Connection Refused' from single source IP", risk: "MEDIUM" },
+      { type: "WHOIS",  val: "Excessive domain lookup queries", risk: "LOW" },
+    ]
+  },
+  "Network Scanning": {
+    desc: "Systematic probing of live hosts, open ports, and running services. Attackers use Nmap, Nessus, and Masscan to identify attack surfaces before exploitation.",
+    iocs: [
+      { type: "Firewall", val: "10+ denied TCP connections from single IP in 60s", risk: "HIGH" },
+      { type: "IDS",      val: "SYN packets to closed ports — half-open scan", risk: "HIGH" },
+      { type: "Network",  val: "UDP probes to common service ports (53,161,5353)", risk: "MEDIUM" },
+      { type: "Log",      val: "Service banner grab attempts on discovered open ports", risk: "MEDIUM" },
+    ]
+  },
+  "Sniffing / MITM": {
+    desc: "Attacker intercepts or captures network traffic. Can be passive (sniffing cleartext) or active (ARP poisoning to redirect traffic through attacker host — MITM).",
+    iocs: [
+      { type: "ARP",     val: "Duplicate ARP replies for gateway IP (ARP poisoning)", risk: "CRITICAL" },
+      { type: "Network", val: "Promiscuous mode NIC detected on segment", risk: "HIGH" },
+      { type: "TLS",     val: "Invalid certificate presented for known domain", risk: "HIGH" },
+      { type: "DNS",     val: "DNS responses from unexpected server IP", risk: "HIGH" },
+      { type: "Flow",    val: "Traffic volume mismatch — host receiving more than sending", risk: "MEDIUM" },
+    ]
+  },
+  "Password Attack": {
+    desc: "Brute-force, credential stuffing, or spray attacks targeting authentication systems. Attackers may also use keyloggers, phishing, or pass-the-hash techniques.",
+    iocs: [
+      { type: "Auth",    val: "15+ failed logins from same IP in 60 seconds", risk: "CRITICAL" },
+      { type: "Auth",    val: "Account lockouts across 5+ accounts simultaneously", risk: "CRITICAL" },
+      { type: "Auth",    val: "Successful login after 10+ failed attempts", risk: "HIGH" },
+      { type: "Network", val: "Connections to port 445 from external IP (pass-the-hash)", risk: "HIGH" },
+      { type: "Endpoint",val: "LSASS memory read access by non-system process", risk: "CRITICAL" },
+    ]
+  },
+  "Ransomware": {
+    desc: "Malware that encrypts files and demands payment. Modern ransomware (RaaS) first exfiltrates data, then encrypts to maximize leverage. Often enters via phishing or RDP brute-force.",
+    iocs: [
+      { type: "Endpoint",val: "Mass file rename to .encrypted / .locked extension", risk: "CRITICAL" },
+      { type: "Endpoint",val: "vssadmin.exe or wbadmin used to delete shadow copies", risk: "CRITICAL" },
+      { type: "Network", val: "Outbound TOR connection or C2 beacon pre-encryption", risk: "CRITICAL" },
+      { type: "Endpoint",val: "bcdedit.exe /set recoveryenabled no", risk: "CRITICAL" },
+      { type: "File",    val: "README_DECRYPT.txt created in multiple directories", risk: "HIGH" },
+    ]
+  },
+  "Phishing": {
+    desc: "Deceptive emails or messages tricking users into clicking malicious links or providing credentials. Spear-phishing targets specific individuals using researched context.",
+    iocs: [
+      { type: "Email",   val: "Sender domain registered <48h ago", risk: "HIGH" },
+      { type: "Email",   val: "Mismatched display name vs. actual sender address", risk: "HIGH" },
+      { type: "URL",     val: "Link redirects through 3+ domains before landing page", risk: "HIGH" },
+      { type: "Endpoint",val: "Office macro execution followed by PowerShell spawn", risk: "CRITICAL" },
+      { type: "Network", val: "HTTP POST to newly registered domain after email open", risk: "HIGH" },
+    ]
+  },
+  "Botnet / C2": {
+    desc: "Compromised host receiving commands from attacker-controlled C2 server. Beaconing is periodic — attacker pulls the host in at regular intervals to receive instructions.",
+    iocs: [
+      { type: "Network", val: "Periodic outbound HTTP/HTTPS at exact interval (beacon)", risk: "CRITICAL" },
+      { type: "DNS",     val: "DNS queries to DGA-generated domain names", risk: "CRITICAL" },
+      { type: "Network", val: "Outbound connection to known C2 IP (threat intel match)", risk: "CRITICAL" },
+      { type: "Endpoint",val: "New service created with random 8-character name", risk: "HIGH" },
+      { type: "Network", val: "Base64-encoded data in HTTP User-Agent header", risk: "HIGH" },
+    ]
+  },
+};
+
+const KILL_CHAIN = [
+  { name: "Reconnaissance",     desc: "Target profiling, OSINT, scanning",     state: "detected" },
+  { name: "Weaponization",      desc: "Payload creation, exploit packaging",    state: "detected" },
+  { name: "Delivery",           desc: "Phishing, drive-by, USB drop",           state: "detected" },
+  { name: "Exploitation",       desc: "Vulnerability triggered, code executed", state: "active" },
+  { name: "Installation",       desc: "Malware drops, persistence established", state: "active" },
+  { name: "C2 Communication",   desc: "Beaconing, command channel open",        state: "pending" },
+  { name: "Actions on Objective","desc":"Exfiltration, encryption, disruption", state: "pending" },
+];
+
+const TTPS = [
+  { id:"T1595", name:"Active Scanning",         count:14 },
+  { id:"T1059", name:"Command & Scripting",      count:9  },
+  { id:"T1110", name:"Brute Force",              count:22 },
+  { id:"T1071", name:"App Layer Protocol (C2)",  count:6  },
+  { id:"T1566", name:"Phishing",                 count:11 },
+  { id:"T1003", name:"OS Credential Dump",       count:5  },
+  { id:"T1021", name:"Remote Services",          count:8  },
+  { id:"T1486", name:"Data Encrypted (Ransom)",  count:3  },
+];
+
+const ATTACK_TYPES = Object.keys(ATTACKS);
+const SOURCES = ["FIREWALL","IDS","ENDPOINT","AUTH","PROXY","EMAIL-GW"];
+const SEVERITIES = ["CRITICAL","HIGH","HIGH","MEDIUM","MEDIUM","LOW"];
+const COLORS = { CRITICAL: "#ff4444", HIGH: "#ff8800", MEDIUM: "#ffd700", LOW: "#00d4ff" };
+
+// Alert templates per attack type
+const ALERT_TEMPLATES = [
+  { type:"Reconnaissance",  sev:"MEDIUM",   desc:'Port scan detected from <SRC> targeting <DST>' },
+  { type:"Reconnaissance",  sev:"HIGH",     desc:'DNS zone transfer attempted by <SRC>' },
+  { type:"Network Scanning",sev:"HIGH",     desc:'Nmap SYN scan — 1024 ports probed on <DST>' },
+  { type:"Sniffing / MITM", sev:"CRITICAL", desc:'ARP poisoning detected — gateway impersonated by <SRC>' },
+  { type:"Sniffing / MITM", sev:"HIGH",     desc:'TLS certificate mismatch on <DST> — possible MITM' },
+  { type:"Password Attack", sev:"CRITICAL", desc:'Brute force: 47 failed logins on <DST> from <SRC>' },
+  { type:"Password Attack", sev:"CRITICAL", desc:'Account lockout storm — 12 accounts locked in 60s' },
+  { type:"Ransomware",      sev:"CRITICAL", desc:'Mass file encryption detected on <DST>' },
+  { type:"Ransomware",      sev:"CRITICAL", desc:'Shadow copy deletion via vssadmin on <DST>' },
+  { type:"Phishing",        sev:"HIGH",     desc:'Macro-enabled Office file opened on <DST>' },
+  { type:"Phishing",        sev:"HIGH",     desc:'PowerShell spawned from Word.exe on <DST>' },
+  { type:"Botnet / C2",     sev:"CRITICAL", desc:'Periodic beacon to known C2 IP from <DST>' },
+  { type:"Botnet / C2",     sev:"HIGH",     desc:'DGA domain queried by <SRC> — possible botnet' },
+  { type:"Network Scanning",sev:"MEDIUM",   desc:'UDP service probe sweep from <SRC>' },
+  { type:"Password Attack", sev:"HIGH",     desc:'LSASS read access by non-system process on <DST>' },
+];
+
+const IPs_INT = () => `192.168.${rnd(1,5)}.${rnd(10,60)}`;
+const IPs_EXT = () => ['185.220.101.5','45.142.212.100','91.108.4.1','203.0.113.42','198.51.100.7'][rnd(0,4)];
+function rnd(a,b){ return Math.floor(Math.random()*(b-a+1))+a; }
+
+// ── State ────────────────────────────────────────────────────────────────────
+let alerts = [];
+let closed = 0;
+let feedPaused = false;
+let filterSev = 'ALL';
+let counts = { CRITICAL:0, HIGH:0, MEDIUM:0, LOW:0 };
+let vectorCounts = {};
+ATTACK_TYPES.forEach(t => vectorCounts[t] = 0);
+let epmBuffer = [];
+let activeTab = ATTACK_TYPES[0];
+
+// ── Init ─────────────────────────────────────────────────────────────────────
+function init() {
+  buildKillChain();
+  buildTTPs();
+  buildTabs();
+  showAttack(ATTACK_TYPES[0]);
+  tick();
+  setInterval(tick, 1000);
+  setInterval(maybeAddAlert, 1800);
+  setInterval(updateEPM, 5000);
+}
+
+function tick() {
+  const now = new Date();
+  document.getElementById('clock').textContent =
+    now.toLocaleTimeString('en-GB') + ' UTC';
+}
+
+// ── Kill chain ────────────────────────────────────────────────────────────────
+function buildKillChain() {
+  const el = document.getElementById('kill-chain');
+  el.innerHTML = KILL_CHAIN.map((s,i) => `
+    <div class="chain-stage ${s.state}">
+      <div class="chain-num">${i+1}</div>
+      <div class="chain-info">
+        <div class="chain-name">${s.name}</div>
+        <div class="chain-desc">${s.desc}</div>
+      </div>
+      <span class="chain-tag ${s.state==='detected'?'tag-detected':s.state==='active'?'tag-active':'tag-pending'}">
+        ${s.state==='detected'?'DETECTED':s.state==='active'?'ACTIVE':'PENDING'}
+      </span>
+    </div>
+  `).join('');
+}
+
+// ── TTPs ──────────────────────────────────────────────────────────────────────
+function buildTTPs() {
+  document.getElementById('ttp-grid').innerHTML = TTPS.map(t => `
+    <div class="ttp-card">
+      <div class="ttp-id">${t.id}</div>
+      <div class="ttp-name">${t.name}</div>
+      <div class="ttp-count">${t.count} events</div>
+    </div>
+  `).join('');
+}
+
+// ── Attack tabs ───────────────────────────────────────────────────────────────
+function buildTabs() {
+  document.getElementById('attack-tabs').innerHTML = ATTACK_TYPES.map(t => `
+    <div class="tab ${t===activeTab?'active':''}" onclick="showAttack('${t}')">${t}</div>
+  `).join('');
+}
+
+function showAttack(name) {
+  activeTab = name;
+  buildTabs();
+  const a = ATTACKS[name];
+  document.getElementById('attack-detail').innerHTML = `
+    <h3>${name}</h3>
+    <p>${a.desc}</p>
+    <table class="ioc-table">
+      <thead><tr><th>Source</th><th>Indicator of Compromise</th><th>Risk</th></tr></thead>
+      <tbody>
+        ${a.iocs.map(ioc=>`
+          <tr>
+            <td class="ioc-type">${ioc.type}</td>
+            <td class="ioc-val">${ioc.val}</td>
+            <td><span class="sev-badge sev-${ioc.risk}">${ioc.risk}</span></td>
+          </tr>`).join('')}
+      </tbody>
+    </table>
+  `;
+}
+
+// ── Alert generation ──────────────────────────────────────────────────────────
+function maybeAddAlert() {
+  if(feedPaused) return;
+  const tpl = ALERT_TEMPLATES[rnd(0, ALERT_TEMPLATES.length-1)];
+  const src = IPs_EXT();
+  const dst = IPs_INT();
+  const desc = tpl.desc.replace('<SRC>', src).replace('<DST>', dst);
+  const ts = new Date().toLocaleTimeString('en-GB');
+  const source = SOURCES[rnd(0, SOURCES.length-1)];
+
+  const alert = { id: Date.now(), sev: tpl.sev, type: tpl.type, desc, src, dst, ts, source };
+  alerts.unshift(alert);
+  if(alerts.length > 100) alerts.pop();
+
+  counts[tpl.sev]++;
+  vectorCounts[tpl.type] = (vectorCounts[tpl.type]||0) + 1;
+  epmBuffer.push(Date.now());
+
+  updateStats();
+  renderFeed();
+  addLogLine(alert);
+  updateBarChart();
+}
+
+function updateStats() {
+  document.getElementById('cnt-critical').textContent = counts.CRITICAL;
+  document.getElementById('cnt-high').textContent     = counts.HIGH;
+  document.getElementById('cnt-medium').textContent   = counts.MEDIUM;
+  document.getElementById('cnt-total').textContent    = alerts.length;
+  document.getElementById('cnt-closed').textContent   = closed;
+}
+
+function renderFeed() {
+  const visible = filterSev === 'ALL' ? alerts : alerts.filter(a => a.sev === filterSev);
+  document.getElementById('feed-count').textContent = visible.length;
+  document.getElementById('alert-feed').innerHTML = visible.map(a => `
+    <div class="alert-item" onclick="openAlertModal(${a.id})">
+      <span class="sev-badge sev-${a.sev}">${a.sev}</span>
+      <span class="alert-type">${a.source}</span>
+      <span class="alert-desc">${a.desc.replace(/([\d.]+\.[\d.]+\.[\d.]+\.[\d.]+)/g,'<span>$1</span>')}</span>
+      <span class="alert-time">${a.ts}</span>
+    </div>
+  `).join('');
+}
+
+function filterAlerts(sev) {
+  filterSev = sev;
+  document.getElementById('sev-filter').value = sev;
+  renderFeed();
+}
+
+// ── Log stream ────────────────────────────────────────────────────────────────
+function addLogLine(a) {
+  const el = document.getElementById('log-stream');
+  const line = document.createElement('div');
+  line.className = 'log-line';
+  line.innerHTML = `<span class="ts">${a.ts}</span> <span class="src">[${a.source}]</span> <span class="evt">${a.sev}</span> <span class="info">${a.type} — ${a.src}</span>`;
+  el.insertBefore(line, el.firstChild);
+  if(el.children.length > 60) el.lastChild.remove();
+}
+
+// ── Bar chart ─────────────────────────────────────────────────────────────────
+function updateBarChart() {
+  const total = Object.values(vectorCounts).reduce((a,b)=>a+b,0) || 1;
+  const sorted = Object.entries(vectorCounts).sort((a,b)=>b[1]-a[1]).slice(0,6);
+  const colors = ['#ff4444','#ff8800','#ffd700','#00d4ff','#a855f7','#00ff88'];
+  document.getElementById('bar-chart').innerHTML = sorted.map(([name, cnt], i) => `
+    <div class="bar-row">
+      <div class="bar-label">${name.split(' ')[0]}</div>
+      <div class="bar-track">
+        <div class="bar-fill" style="width:${Math.max(5,cnt/total*100)}%;background:${colors[i]};color:var(--bg);">
+          ${cnt>2?cnt:''}
+        </div>
+      </div>
+      <div class="bar-val">${cnt}</div>
+    </div>
+  `).join('');
+}
+
+// ── EPM counter ────────────────────────────────────────────────────────────────
+function updateEPM() {
+  const now = Date.now();
+  epmBuffer = epmBuffer.filter(t => now - t < 60000);
+  document.getElementById('epm').textContent = epmBuffer.length;
+}
+
+// ── Controls ──────────────────────────────────────────────────────────────────
+function toggleFeed() {
+  feedPaused = !feedPaused;
+  event.target.textContent = feedPaused ? 'Resume Feed' : 'Pause Feed';
+  event.target.style.borderColor = feedPaused ? 'var(--orange)' : 'var(--accent)';
+}
+
+function clearAlerts() {
+  closed += alerts.length;
+  alerts = [];
+  counts = { CRITICAL:0, HIGH:0, MEDIUM:0, LOW:0 };
+  updateStats();
+  renderFeed();
+  document.getElementById('log-stream').innerHTML = '';
+}
+
+// ── Alert modal ───────────────────────────────────────────────────────────────
+function openAlertModal(id) {
+  const a = alerts.find(x => x.id === id);
+  if(!a) return;
+  const tl = [
+    { t: '00:00', txt: 'Alert generated by SIEM correlation rule' },
+    { t: '+00:12', txt: 'Log ingested from ' + a.source },
+    { t: '+00:34', txt: 'Matched threat intel feed entry' },
+    { t: '+01:02', txt: 'L1 Analyst notified — awaiting triage decision' },
+  ];
+  document.getElementById('modal-body').innerHTML = `
+    <div class="modal-row">
+      <div class="modal-field"><label>Severity</label><div class="val red">${a.sev}</div></div>
+      <div class="modal-field"><label>Source</label><div class="val">${a.source}</div></div>
+      <div class="modal-field"><label>Time</label><div class="val">${a.ts}</div></div>
+    </div>
+    <div class="modal-row">
+      <div class="modal-field"><label>Attack Type</label><div class="val yellow">${a.type}</div></div>
+      <div class="modal-field"><label>Source IP</label><div class="val">${a.src}</div></div>
+    </div>
+    <div class="modal-field" style="margin-bottom:10px"><label>Description</label><div class="val">${a.desc}</div></div>
+    <div class="timeline">
+      <div style="font-size:10px;color:var(--dim);margin-bottom:6px;text-transform:uppercase;letter-spacing:1px;">Event Timeline</div>
+      ${tl.map(t=>`<div class="timeline-item"><span class="tl-time">${t.t}</span><span class="tl-text">${t.txt}</span></div>`).join('')}
+    </div>
+    <div class="modal-actions">
+      <button class="btn danger" onclick="escalateAlert(${id})">Escalate to L2</button>
+      <button class="btn" onclick="falsePositive(${id})">Mark False Positive</button>
+      <button class="btn success" onclick="closeAlert(${id})">Close Alert</button>
+    </div>
+  `;
+  document.getElementById('modal').classList.add('open');
+}
+
+function closeModal(e) {
+  if(e.target.id==='modal') document.getElementById('modal').classList.remove('open');
+}
+
+function escalateAlert(id) {
+  alerts = alerts.filter(a => a.id !== id);
+  closed++;
+  document.getElementById('modal').classList.remove('open');
+  updateStats(); renderFeed();
+}
+
+function falsePositive(id) { escalateAlert(id); }
+function closeAlert(id) { escalateAlert(id); }
+
+function openIncident() {
+  const crit = alerts.filter(a=>a.sev==='CRITICAL');
+  const a = crit[0] || alerts[0];
+  if(!a){ alert('No active alerts.'); return; }
+  document.getElementById('modal-body').innerHTML = `
+    <div class="modal-row">
+      <div class="modal-field"><label>Ticket ID</label><div class="val c-accent">INC-${Date.now().toString().slice(-6)}</div></div>
+      <div class="modal-field"><label>Priority</label><div class="val red">P1 — CRITICAL</div></div>
+    </div>
+    <div class="modal-field" style="margin-bottom:10px"><label>Title</label><div class="val">${a.type} — ${a.desc.substring(0,60)}...</div></div>
+    <div class="modal-row">
+      <div class="modal-field"><label>Assigned To</label><div class="val">SOC-L2-Analyst</div></div>
+      <div class="modal-field"><label>Status</label><div class="val yellow">OPEN</div></div>
+    </div>
+    <div class="modal-field" style="margin-bottom:10px"><label>Affected Host</label><div class="val">${a.dst}</div></div>
+    <div style="font-size:10px;color:var(--dim);margin-top:12px;padding:10px;background:var(--bg);border-radius:4px;">
+      Ticket created and forwarded to L2 queue. IR team will investigate scope and containment options.
+    </div>
+    <div class="modal-actions">
+      <button class="btn success" onclick="document.getElementById('modal').classList.remove('open')">Confirm & Close</button>
+    </div>
+  `;
+  document.getElementById('modal').classList.add('open');
+}
+
+// ── Seed initial data ─────────────────────────────────────────────────────────
+function seed() {
+  for(let i=0;i<8;i++) maybeAddAlert();
+}
+
+window.onload = () => { init(); setTimeout(seed,200); };
+</script>
+</body>
+</html>
