@@ -4,19 +4,6 @@ A daily, hands-on deep dive into Security Operations — building real tools, wr
 
 ---
 
-## Structure
-
-```
-soc-journey/
-├── day-01/  — SOC Foundations
-├── day-02/  — SOC Processes, Models, Maturity, KPIs
-├── day-03/  — Cyber Threats, IoCs, Attack Methodology
-├── day-04/  — Password Attacks, Malware, APTs, Network Protocol Attacks
-└── ...
-```
-
----
-
 ## Topics Covered
 
 | Day | Topic | Lab |
@@ -25,21 +12,23 @@ soc-journey/
 | 02 | SOC Processes, Models, Maturity, and KPIs | [Day 02](day-02/) |
 | 03 | Cyber Threats, IoCs, TTPs, and Attack Methodology | [Day 03](day-03/) |
 | 04 | Password Attacks, Malware Types, APTs, and Protocol-Level Attacks | [Day 04](day-04/) |
+| 05 | Application-Level Attacks, IoC Detection, and Web Security | [Day 05](day-05/) |
 
 ---
 
-## Quick Start — Day 04 GUI
+## Quick Start
 
 ```bash
 git clone https://github.com/Odaimherat/soc-journey
-cd soc-journey/day-04/lab
-open apt_malware_workbench.html
+
+# Day 03 — SIEM dashboard
+open day-03/lab/siem_threat_dashboard.html
+
+# Day 04 — APT & Malware Workbench
+open day-04/lab/apt_malware_workbench.html
+
+# Day 05 — Web App Security Lab
+open day-05/lab/webapp_security_lab.html
 ```
 
-Open in any browser. No install required.
-
----
-
-## About
-
-Practical security operations content. Every lab runs locally. Every concept explained in plain language backed by cited sources.
+All GUI labs open in any browser. No install or server required.
