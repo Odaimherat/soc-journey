@@ -1,0 +1,871 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src 'none'; connect-src 'none'; form-action 'none'; base-uri 'none';">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Live System Analysis Console</title>
+<style>
+:root {
+  --bg:#06080f; --panel:#0a1020; --panel2:#0e1628; --border:#1a2a42;
+  --accent:#00c8ff; --red:#ff2d55; --orange:#ff8c00; --yellow:#ffd60a;
+  --green:#30d158; --purple:#bf5af2; --pink:#ff375f;
+  --text:#c0d4f0; --dim:#3a5070; --mono:'Courier New',monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:'Segoe UI',sans-serif;font-size:12px;height:100vh;overflow:hidden;display:flex;flex-direction:column;}
+
+/* ── TOP BAR ── */
+.topbar{background:var(--panel);border-bottom:1px solid var(--border);padding:8px 16px;
+  display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+.logo{font-family:var(--mono);font-weight:800;font-size:14px;letter-spacing:1px;}
+.logo .a{color:var(--accent);} .logo .b{color:var(--red);}
+.topbar-center{display:flex;gap:8px;}
+.threat-badge{padding:3px 12px;border-radius:12px;font-size:10px;font-weight:700;letter-spacing:1px;cursor:pointer;}
+.tb-critical{background:rgba(255,45,85,.2);color:var(--red);border:1px solid var(--red);animation:pulse 2s infinite;}
+.tb-high{background:rgba(255,140,0,.15);color:var(--orange);border:1px solid var(--orange);}
+.tb-medium{background:rgba(255,214,10,.1);color:var(--yellow);border:1px solid var(--yellow);}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.6}}
+.topbar-right{display:flex;gap:16px;align-items:center;font-size:10px;color:var(--dim);}
+.live{color:var(--green);display:flex;align-items:center;gap:4px;}
+.live::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--green);animation:pulse 1.2s infinite;display:inline-block;}
+#clock{color:var(--accent);font-family:var(--mono);font-size:11px;}
+
+/* ── TABS ── */
+.tabs{display:flex;background:var(--panel);border-bottom:1px solid var(--border);flex-shrink:0;}
+.tab{padding:8px 16px;cursor:pointer;font-size:11px;color:var(--dim);border-bottom:2px solid transparent;transition:all .2s;user-select:none;}
+.tab:hover{color:var(--accent);}
+.tab.active{color:var(--accent);border-bottom-color:var(--accent);}
+.tab .cnt{background:var(--red);color:#fff;border-radius:8px;padding:1px 5px;font-size:9px;margin-left:4px;}
+
+/* ── LAYOUT ── */
+.workspace{flex:1;display:flex;overflow:hidden;}
+.left-sidebar{width:220px;border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0;}
+.main-content{flex:1;display:flex;flex-direction:column;overflow:hidden;}
+.right-panel{width:280px;border-left:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0;}
+
+/* ── SIDEBAR: HOST LIST ── */
+.sidebar-header{padding:8px 10px;background:var(--panel);border-bottom:1px solid var(--border);font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--accent);}
+.host-list{overflow-y:auto;flex:1;}
+.host-item{padding:8px 10px;border-bottom:1px solid rgba(26,42,66,.5);cursor:pointer;transition:background .15s;}
+.host-item:hover{background:rgba(0,200,255,.04);}
+.host-item.selected{background:rgba(0,200,255,.07);border-left:2px solid var(--accent);}
+.host-name{font-size:11px;font-weight:600;}
+.host-ip{font-size:10px;color:var(--dim);font-family:var(--mono);}
+.host-status{font-size:9px;padding:1px 5px;border-radius:3px;margin-top:3px;display:inline-block;}
+.hs-infected{background:rgba(255,45,85,.2);color:var(--red);}
+.hs-suspicious{background:rgba(255,140,0,.15);color:var(--orange);}
+.hs-clean{background:rgba(48,209,88,.12);color:var(--green);}
+.hs-monitoring{background:rgba(0,200,255,.1);color:var(--accent);}
+
+/* ── PAGE SYSTEM ── */
+.page{display:none;flex:1;overflow:hidden;flex-direction:column;}
+.page.active{display:flex;}
+
+/* ── PROCESS MONITOR ── */
+.process-toolbar{padding:6px 10px;background:var(--panel);border-bottom:1px solid var(--border);display:flex;gap:8px;align-items:center;flex-shrink:0;}
+.search-box{background:var(--bg);border:1px solid var(--border);color:var(--text);padding:4px 8px;border-radius:4px;font-size:11px;font-family:var(--mono);width:180px;}
+.search-box:focus{outline:none;border-color:var(--accent);}
+.btn{padding:4px 10px;border-radius:4px;border:1px solid var(--accent);background:rgba(0,200,255,.08);color:var(--accent);cursor:pointer;font-size:11px;transition:all .2s;}
+.btn:hover{background:rgba(0,200,255,.15);}
+.btn.red{border-color:var(--red);background:rgba(255,45,85,.08);color:var(--red);}
+.btn.red:hover{background:rgba(255,45,85,.15);}
+.btn.green{border-color:var(--green);background:rgba(48,209,88,.08);color:var(--green);}
+.proc-table-wrap{overflow-y:auto;flex:1;}
+.proc-table{width:100%;border-collapse:collapse;}
+.proc-table th{position:sticky;top:0;background:var(--panel);padding:5px 8px;text-align:left;font-size:9px;text-transform:uppercase;letter-spacing:1px;color:var(--dim);border-bottom:1px solid var(--border);font-weight:600;}
+.proc-table td{padding:5px 8px;border-bottom:1px solid rgba(26,42,66,.4);font-size:11px;font-family:var(--mono);}
+.proc-table tr{cursor:pointer;transition:background .1s;}
+.proc-table tr:hover td{background:rgba(0,200,255,.04);}
+.proc-table tr.selected td{background:rgba(0,200,255,.08);}
+.proc-table tr.malicious td{background:rgba(255,45,85,.05);}
+.proc-table tr.suspicious td{background:rgba(255,140,0,.04);}
+.proc-flag{font-size:9px;padding:1px 5px;border-radius:3px;font-weight:bold;}
+.pf-malicious{background:rgba(255,45,85,.2);color:var(--red);}
+.pf-suspicious{background:rgba(255,140,0,.15);color:var(--orange);}
+.pf-clean{background:rgba(48,209,88,.1);color:var(--green);}
+.pf-system{background:rgba(0,200,255,.1);color:var(--accent);}
+
+/* ── NETWORK CONNECTIONS ── */
+.conn-table{width:100%;border-collapse:collapse;}
+.conn-table th{position:sticky;top:0;background:var(--panel);padding:5px 8px;text-align:left;font-size:9px;text-transform:uppercase;letter-spacing:1px;color:var(--dim);border-bottom:1px solid var(--border);}
+.conn-table td{padding:5px 8px;border-bottom:1px solid rgba(26,42,66,.4);font-size:11px;font-family:var(--mono);}
+.conn-table tr{cursor:pointer;transition:background .1s;}
+.conn-table tr:hover td{background:rgba(0,200,255,.04);}
+.conn-ESTABLISHED{color:var(--green);}
+.conn-LISTEN{color:var(--accent);}
+.conn-CLOSE_WAIT{color:var(--yellow);}
+.conn-TIME_WAIT{color:var(--dim);}
+.conn-SYN_SENT{color:var(--red);font-weight:bold;}
+
+/* ── REGISTRY MONITOR ── */
+.reg-tree{overflow-y:auto;flex:1;padding:8px;}
+.reg-key{margin-bottom:4px;}
+.reg-key-name{display:flex;align-items:center;gap:6px;padding:4px 8px;border-radius:4px;cursor:pointer;transition:background .15s;}
+.reg-key-name:hover{background:rgba(0,200,255,.05);}
+.reg-key-name.expanded{background:rgba(0,200,255,.04);}
+.reg-key-name.flagged{background:rgba(255,45,85,.05);border:1px solid rgba(255,45,85,.2);}
+.reg-toggle{color:var(--dim);width:12px;font-size:10px;user-select:none;}
+.reg-icon{font-size:12px;}
+.reg-label{font-size:11px;font-family:var(--mono);}
+.reg-badge{font-size:9px;padding:1px 5px;border-radius:3px;margin-left:auto;}
+.rb-malware{background:rgba(255,45,85,.2);color:var(--red);}
+.rb-new{background:rgba(255,140,0,.15);color:var(--orange);}
+.reg-values{margin-left:24px;margin-top:2px;}
+.reg-value{display:flex;gap:8px;padding:3px 8px;border-radius:3px;font-size:10px;font-family:var(--mono);cursor:pointer;}
+.reg-value:hover{background:rgba(0,200,255,.04);}
+.reg-value.flagged{background:rgba(255,45,85,.06);border-left:2px solid var(--red);}
+.rv-name{color:var(--purple);min-width:140px;}
+.rv-type{color:var(--dim);min-width:60px;}
+.rv-data{color:var(--text);word-break:break-all;}
+.rv-data.suspicious{color:var(--orange);}
+.rv-data.malicious{color:var(--red);}
+
+/* ── KILL CHAIN ── */
+.kc-layout{display:grid;grid-template-columns:200px 1fr;height:100%;overflow:hidden;}
+.kc-phases{border-right:1px solid var(--border);overflow-y:auto;}
+.kc-phase{padding:10px 12px;border-bottom:1px solid rgba(26,42,66,.5);cursor:pointer;transition:all .2s;}
+.kc-phase:hover{background:rgba(0,200,255,.04);}
+.kc-phase.active{background:rgba(0,200,255,.07);border-left:3px solid var(--accent);}
+.kc-phase.breached{background:rgba(255,45,85,.06);border-left:3px solid var(--red);}
+.kc-phase.defended{background:rgba(48,209,88,.05);border-left:3px solid var(--green);}
+.kc-num{font-size:10px;color:var(--dim);margin-bottom:2px;}
+.kc-name{font-size:12px;font-weight:600;}
+.kc-phase.breached .kc-name{color:var(--red);}
+.kc-phase.defended .kc-name{color:var(--green);}
+.kc-phase.active .kc-name{color:var(--accent);}
+.kc-status-dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:6px;}
+.dot-breached{background:var(--red);}
+.dot-defended{background:var(--green);}
+.dot-active{background:var(--accent);animation:pulse 1.5s infinite;}
+.dot-pending{background:var(--dim);}
+
+.kc-detail{overflow-y:auto;padding:16px;}
+.kc-detail-header{margin-bottom:14px;padding-bottom:12px;border-bottom:1px solid var(--border);}
+.kc-detail-header h2{font-size:16px;font-weight:700;margin-bottom:4px;}
+.kc-detail-header .status-label{font-size:11px;padding:3px 10px;border-radius:4px;display:inline-block;}
+.sl-breached{background:rgba(255,45,85,.2);color:var(--red);border:1px solid var(--red);}
+.sl-defended{background:rgba(48,209,88,.15);color:var(--green);border:1px solid var(--green);}
+.sl-active{background:rgba(0,200,255,.12);color:var(--accent);border:1px solid var(--accent);}
+.sl-pending{background:rgba(58,80,112,.3);color:var(--dim);border:1px solid var(--dim);}
+.section-title{font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:var(--dim);margin-bottom:8px;margin-top:14px;}
+.kc-desc{font-size:12px;line-height:1.7;color:var(--text);}
+.ioc-grid{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px;}
+.ioc-chip{background:rgba(255,45,85,.1);border:1px solid rgba(255,45,85,.25);color:var(--red);border-radius:3px;padding:3px 8px;font-size:10px;font-family:var(--mono);}
+.detection-box{background:rgba(48,209,88,.07);border:1px solid rgba(48,209,88,.2);border-radius:5px;padding:10px;margin-top:6px;font-size:11px;line-height:1.6;}
+.detection-box strong{color:var(--green);}
+.mitre-box{background:rgba(191,90,242,.08);border:1px solid rgba(191,90,242,.2);border-radius:5px;padding:10px;margin-top:8px;font-size:11px;font-family:var(--mono);}
+.mitre-box .mitre-label{color:var(--purple);font-weight:bold;font-size:10px;margin-bottom:4px;}
+.scenario-steps{margin-top:8px;}
+.sc-step{display:flex;gap:10px;padding:6px;border-radius:4px;margin-bottom:4px;font-size:11px;border:1px solid var(--border);}
+.sc-step.attack{background:rgba(255,45,85,.05);border-color:rgba(255,45,85,.15);}
+.sc-step.defend{background:rgba(48,209,88,.04);border-color:rgba(48,209,88,.12);}
+.sc-step-num{width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:bold;flex-shrink:0;}
+.sc-step.attack .sc-step-num{background:var(--red);color:#fff;}
+.sc-step.defend .sc-step-num{background:var(--green);color:#000;}
+.sc-step-text{flex:1;line-height:1.5;}
+
+/* ── INSIDER THREAT ANALYZER ── */
+.it-layout{display:grid;grid-template-columns:1fr 1fr;height:100%;overflow:hidden;gap:0;}
+.it-left{border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;}
+.it-right{display:flex;flex-direction:column;overflow:hidden;}
+.it-section{padding:8px 10px;background:var(--panel);border-bottom:1px solid var(--border);font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--accent);}
+.user-grid{overflow-y:auto;flex:1;}
+.user-card{padding:10px;border-bottom:1px solid rgba(26,42,66,.5);cursor:pointer;transition:background .15s;}
+.user-card:hover{background:rgba(0,200,255,.04);}
+.user-card.selected{background:rgba(0,200,255,.07);}
+.user-card.high-risk{background:rgba(255,45,85,.04);}
+.uc-header{display:flex;align-items:center;gap:8px;margin-bottom:6px;}
+.uc-avatar{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:bold;flex-shrink:0;}
+.uc-info .uc-name{font-size:12px;font-weight:600;}
+.uc-info .uc-role{font-size:10px;color:var(--dim);}
+.risk-meter{display:flex;align-items:center;gap:6px;margin-top:6px;}
+.risk-label{font-size:10px;color:var(--dim);min-width:30px;}
+.risk-track{flex:1;background:var(--border);border-radius:3px;height:6px;overflow:hidden;}
+.risk-fill{height:100%;border-radius:3px;transition:width .5s;}
+.risk-score{font-size:11px;font-weight:bold;min-width:30px;text-align:right;}
+.ioc-flags{display:flex;flex-wrap:wrap;gap:3px;margin-top:6px;}
+.ioc-flag{font-size:9px;padding:2px 6px;border-radius:3px;background:rgba(255,140,0,.12);color:var(--orange);border:1px solid rgba(255,140,0,.2);}
+.ioc-flag.critical{background:rgba(255,45,85,.15);color:var(--red);border-color:rgba(255,45,85,.3);}
+
+.activity-feed{overflow-y:auto;flex:1;}
+.activity-item{padding:8px 10px;border-bottom:1px solid rgba(26,42,66,.4);display:flex;gap:8px;align-items:flex-start;}
+.activity-icon{font-size:14px;flex-shrink:0;}
+.activity-info{flex:1;}
+.ai-action{font-size:11px;font-weight:500;}
+.ai-detail{font-size:10px;color:var(--dim);margin-top:2px;font-family:var(--mono);}
+.ai-time{font-size:10px;color:var(--dim);}
+.activity-sev{font-size:9px;padding:2px 5px;border-radius:3px;}
+
+/* ── RIGHT PANEL ── */
+.rp-section{padding:8px 10px;background:var(--panel);border-bottom:1px solid var(--border);font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--accent);}
+.event-log{overflow-y:auto;flex:1;font-family:var(--mono);font-size:10px;}
+.ev-item{padding:4px 8px;border-bottom:1px solid rgba(26,42,66,.3);display:flex;gap:6px;}
+.ev-time{color:var(--dim);flex-shrink:0;}
+.ev-sev{flex-shrink:0;font-weight:bold;}
+.ev-sev.CRIT{color:var(--red);}
+.ev-sev.HIGH{color:var(--orange);}
+.ev-sev.MED{color:var(--yellow);}
+.ev-sev.LOW{color:var(--accent);}
+.ev-msg{color:var(--text);word-break:break-word;}
+
+/* ── SCROLLBAR ── */
+::-webkit-scrollbar{width:4px;height:4px;}
+::-webkit-scrollbar-track{background:var(--bg);}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="logo"><span class="a">Live</span><span class="b">Sys</span> Analysis Console</div>
+  <div class="topbar-center">
+    <span class="threat-badge tb-critical" id="badge-critical">3 CRITICAL</span>
+    <span class="threat-badge tb-high" id="badge-high">7 HIGH</span>
+    <span class="threat-badge tb-medium" id="badge-medium">12 MEDIUM</span>
+  </div>
+  <div class="topbar-right">
+    <span class="live">LIVE</span>
+    <span>Hosts Monitored: 9</span>
+    <span id="clock"></span>
+  </div>
+</div>
+
+<div class="tabs">
+  <div class="tab active" onclick="switchTab('proc',this)">Process Monitor<span class="cnt" id="tc-proc">0</span></div>
+  <div class="tab" onclick="switchTab('net',this)">Network Connections<span class="cnt" id="tc-net">0</span></div>
+  <div class="tab" onclick="switchTab('reg',this)">Registry Monitor</div>
+  <div class="tab" onclick="switchTab('kc',this)">Kill Chain Tracker</div>
+  <div class="tab" onclick="switchTab('insider',this)">Insider Threat Analyzer</div>
+</div>
+
+<div class="workspace">
+  <!-- LEFT: HOST LIST -->
+  <div class="left-sidebar">
+    <div class="sidebar-header">Monitored Hosts</div>
+    <div class="host-list" id="host-list"></div>
+  </div>
+
+  <!-- MAIN CONTENT AREA -->
+  <div class="main-content">
+
+    <!-- PROCESS MONITOR -->
+    <div class="page active" id="page-proc">
+      <div class="process-toolbar">
+        <input class="search-box" id="proc-search" placeholder="Filter process name..." oninput="filterProcs()">
+        <select id="proc-filter" onchange="filterProcs()" style="background:var(--bg);border:1px solid var(--border);color:var(--text);padding:4px 6px;border-radius:4px;font-size:11px;">
+          <option value="ALL">All Processes</option>
+          <option value="malicious">Malicious Only</option>
+          <option value="suspicious">Suspicious Only</option>
+          <option value="clean">Clean Only</option>
+        </select>
+        <button class="btn red" onclick="killSelected()">Terminate Selected</button>
+        <button class="btn" onclick="analyzeSelected()">Analyze</button>
+        <button class="btn green" onclick="quarantine()">Quarantine</button>
+        <span style="margin-left:auto;font-size:10px;color:var(--dim)" id="proc-count"></span>
+      </div>
+      <div class="proc-table-wrap">
+        <table class="proc-table" id="proc-table">
+          <thead><tr>
+            <th>PID</th><th>Process Name</th><th>Parent</th><th>User</th>
+            <th>CPU%</th><th>Memory</th><th>Connections</th><th>Path</th><th>Status</th>
+          </tr></thead>
+          <tbody id="proc-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- NETWORK CONNECTIONS -->
+    <div class="page" id="page-net">
+      <div class="process-toolbar">
+        <input class="search-box" id="net-search" placeholder="Filter by IP or port..." oninput="filterConns()">
+        <select id="conn-filter" onchange="filterConns()" style="background:var(--bg);border:1px solid var(--border);color:var(--text);padding:4px 6px;border-radius:4px;font-size:11px;">
+          <option value="ALL">All States</option>
+          <option value="SYN_SENT">SYN_SENT (suspicious)</option>
+          <option value="ESTABLISHED">ESTABLISHED</option>
+          <option value="LISTEN">LISTEN</option>
+        </select>
+        <button class="btn red" onclick="blockConn()">Block Connection</button>
+        <button class="btn" onclick="traceRoute()">Trace Route</button>
+        <span style="margin-left:auto;font-size:10px;color:var(--dim)" id="conn-count"></span>
+      </div>
+      <div style="overflow-y:auto;flex:1;">
+        <table class="conn-table" id="conn-table">
+          <thead><tr>
+            <th>Protocol</th><th>Local Address</th><th>Local Port</th>
+            <th>Remote Address</th><th>Remote Port</th><th>State</th>
+            <th>PID</th><th>Process</th><th>Threat Intel</th>
+          </tr></thead>
+          <tbody id="conn-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- REGISTRY MONITOR -->
+    <div class="page" id="page-reg">
+      <div class="process-toolbar">
+        <span style="font-size:11px;color:var(--text)">Real-time registry monitoring — persistence keys, run entries, and malware activity</span>
+        <span class="btn red" style="margin-left:auto;cursor:default">3 Suspicious Keys Detected</span>
+      </div>
+      <div class="reg-tree" id="reg-tree"></div>
+    </div>
+
+    <!-- KILL CHAIN TRACKER -->
+    <div class="page" id="page-kc">
+      <div class="kc-layout">
+        <div class="kc-phases" id="kc-phases"></div>
+        <div class="kc-detail" id="kc-detail">
+          <div style="padding:40px;text-align:center;color:var(--dim)">Select a kill chain phase to view details, IoCs, and detection guidance</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- INSIDER THREAT ANALYZER -->
+    <div class="page" id="page-insider">
+      <div class="it-layout">
+        <div class="it-left">
+          <div class="it-section">User Risk Profiles</div>
+          <div class="user-grid" id="user-grid"></div>
+        </div>
+        <div class="it-right">
+          <div class="it-section">Behavioral Activity Feed</div>
+          <div class="activity-feed" id="activity-feed"></div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /main-content -->
+
+  <!-- RIGHT PANEL: EVENT LOG -->
+  <div class="right-panel">
+    <div class="rp-section">Live Event Log</div>
+    <div class="event-log" id="event-log"></div>
+    <div style="padding:8px;border-top:1px solid var(--border);background:var(--panel);">
+      <button class="btn" style="width:100%;margin-bottom:4px" onclick="exportLog()">Export Log</button>
+      <button class="btn red" style="width:100%" onclick="clearLog()">Clear</button>
+    </div>
+  </div>
+</div><!-- /workspace -->
+
+<script>
+// ── SAFETY: HTML escape helper ────────────────────────────────────────────────
+function e(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
+
+// ── CLOCK ─────────────────────────────────────────────────────────────────────
+setInterval(()=>document.getElementById('clock').textContent=new Date().toLocaleTimeString('en-GB')+' UTC',1000);
+
+// ── TAB SWITCHING ─────────────────────────────────────────────────────────────
+function switchTab(id,el){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('page-'+id).classList.add('active');
+  el.classList.add('active');
+}
+
+let selectedHost=0;
+let selectedProcPid=null;
+let selectedConnIdx=null;
+
+// ── HOST DATA ─────────────────────────────────────────────────────────────────
+const HOSTS=[
+  {id:0,name:'WS-FINANCE-01',ip:'192.168.1.15',status:'infected',os:'Windows 10 Pro'},
+  {id:1,name:'WS-HR-03',ip:'192.168.1.22',status:'suspicious',os:'Windows 11'},
+  {id:2,name:'SRV-DC-01',ip:'192.168.1.5',status:'monitoring',os:'Windows Server 2019'},
+  {id:3,name:'SRV-FILE-01',ip:'192.168.1.10',status:'suspicious',os:'Windows Server 2016'},
+  {id:4,name:'WS-DEV-05',ip:'192.168.1.31',status:'clean',os:'Ubuntu 22.04'},
+  {id:5,name:'WS-EXEC-01',ip:'192.168.1.20',status:'clean',os:'Windows 11'},
+  {id:6,name:'SRV-WEB-01',ip:'192.168.1.8',status:'suspicious',os:'Debian 11'},
+  {id:7,name:'WS-IT-02',ip:'192.168.1.18',status:'clean',os:'Windows 10'},
+  {id:8,name:'LAPTOP-CFO-01',ip:'192.168.1.25',status:'monitoring',os:'macOS 14'},
+];
+
+function buildHostList(){
+  const el=document.getElementById('host-list');
+  el.innerHTML='';
+  HOSTS.forEach((h,i)=>{
+    const div=document.createElement('div');
+    div.className='host-item'+(i===selectedHost?' selected':'');
+    div.addEventListener('click',()=>selectHost(i));
+    const statusClass={infected:'hs-infected',suspicious:'hs-suspicious',clean:'hs-clean',monitoring:'hs-monitoring'}[h.status];
+    div.innerHTML='<div class="host-name">'+e(h.name)+'</div>'
+      +'<div class="host-ip">'+e(h.ip)+'</div>'
+      +'<div class="host-status '+statusClass+'">'+e(h.status.toUpperCase())+'</div>';
+    el.appendChild(div);
+  });
+}
+
+function selectHost(i){
+  selectedHost=i;
+  buildHostList();
+  buildProcTable();
+  buildConnTable();
+  addEvent('INFO','LOW','Host selected: '+HOSTS[i].name+' ('+HOSTS[i].ip+')');
+}
+
+// ── PROCESS DATA ──────────────────────────────────────────────────────────────
+const PROCESSES_BASE=[
+  {pid:4,    name:'System',          parent:'None',        user:'SYSTEM', cpu:0.1, mem:0.1, conns:0, path:'',                                            flag:'system'},
+  {pid:628,  name:'lsass.exe',       parent:'wininit.exe', user:'SYSTEM', cpu:0.4, mem:12,  conns:0, path:'C:\\Windows\\System32\\lsass.exe',             flag:'system'},
+  {pid:820,  name:'svchost.exe',     parent:'services.exe',user:'SYSTEM', cpu:0.8, mem:18,  conns:2, path:'C:\\Windows\\System32\\svchost.exe',           flag:'clean'},
+  {pid:1234, name:'explorer.exe',    parent:'userinit.exe',user:'jsmith', cpu:1.2, mem:42,  conns:1, path:'C:\\Windows\\explorer.exe',                    flag:'clean'},
+  {pid:2841, name:'chrome.exe',      parent:'explorer.exe',user:'jsmith', cpu:3.1, mem:280, conns:12,path:'C:\\Program Files\\Google\\Chrome\\chrome.exe', flag:'clean'},
+  {pid:3100, name:'powershell.exe',  parent:'cmd.exe',     user:'jsmith', cpu:8.2, mem:64,  conns:1, path:'C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe', flag:'suspicious'},
+  {pid:3451, name:'cmd.exe',         parent:'explorer.exe',user:'jsmith', cpu:0.1, mem:4,   conns:0, path:'C:\\Windows\\System32\\cmd.exe',               flag:'suspicious'},
+  {pid:4192, name:'update.exe',      parent:'svchost.exe', user:'SYSTEM', cpu:22.4,mem:128, conns:3, path:'C:\\Windows\\Temp\\update.exe',                flag:'malicious'},
+  {pid:4444, name:'nc.exe',          parent:'cmd.exe',     user:'jsmith', cpu:0.3, mem:2,   conns:2, path:'C:\\Users\\jsmith\\AppData\\Local\\Temp\\nc.exe', flag:'malicious'},
+  {pid:5001, name:'winlogon.exe',    parent:'wininit.exe', user:'SYSTEM', cpu:0.2, mem:8,   conns:0, path:'C:\\Windows\\System32\\winlogon.exe',          flag:'system'},
+  {pid:5512, name:'teams.exe',       parent:'explorer.exe',user:'jsmith', cpu:4.1, mem:310, conns:8, path:'C:\\Users\\jsmith\\AppData\\Local\\Microsoft\\Teams\\current\\Teams.exe', flag:'clean'},
+  {pid:6001, name:'mshta.exe',       parent:'powershell.exe',user:'jsmith',cpu:5.8,mem:22,  conns:1, path:'C:\\Windows\\System32\\mshta.exe',             flag:'malicious'},
+  {pid:7200, name:'svch0st.exe',     parent:'services.exe',user:'SYSTEM', cpu:12.1,mem:55,  conns:4, path:'C:\\Windows\\System32\\svch0st.exe',           flag:'malicious'},
+];
+
+let PROCESSES=[...PROCESSES_BASE];
+let selectedPid=null;
+
+function flagClass(f){return{malicious:'pf-malicious',suspicious:'pf-suspicious',clean:'pf-clean',system:'pf-system'}[f]||'pf-clean';}
+function rowClass(f){return{malicious:'malicious',suspicious:'suspicious'}[f]||'';}
+
+function buildProcTable(){
+  const search=document.getElementById('proc-search').value.toLowerCase();
+  const filter=document.getElementById('proc-filter').value;
+  let procs=PROCESSES;
+  if(search) procs=procs.filter(p=>p.name.toLowerCase().includes(search)||String(p.pid).includes(search));
+  if(filter!=='ALL') procs=procs.filter(p=>p.flag===filter);
+  document.getElementById('proc-count').textContent=procs.length+' processes';
+  document.getElementById('tc-proc').textContent=PROCESSES.filter(p=>p.flag==='malicious').length;
+  const tbody=document.getElementById('proc-tbody');
+  tbody.innerHTML='';
+  procs.forEach(p=>{
+    const tr=document.createElement('tr');
+    tr.className=rowClass(p.flag)+(p.pid===selectedPid?' selected':'');
+    tr.addEventListener('click',()=>selectProc(p.pid));
+    const memStr=p.mem<1?p.mem+'MB':p.mem+'MB';
+    const cells=[
+      e(p.pid), e(p.name),
+      e(p.parent), e(p.user),
+      e(p.cpu.toFixed(1))+'%', e(memStr),
+      e(p.conns),
+      '<span title="'+e(p.path)+'" style="color:var(--dim);font-size:10px">'+(p.path?p.path.split('\\').pop():'-')+'</span>',
+      '<span class="proc-flag '+flagClass(p.flag)+'">'+e(p.flag.toUpperCase())+'</span>',
+    ];
+    tr.innerHTML=cells.map(c=>'<td>'+c+'</td>').join('');
+    tbody.appendChild(tr);
+  });
+}
+function filterProcs(){buildProcTable();}
+function selectProc(pid){
+  selectedPid=pid;
+  buildProcTable();
+  const p=PROCESSES.find(x=>x.pid===pid);
+  if(p) addEvent(p.flag==='malicious'?'ALERT':p.flag==='suspicious'?'WARN':'INFO',
+    p.flag==='malicious'?'CRIT':p.flag==='suspicious'?'HIGH':'LOW',
+    'Process selected: [PID:'+p.pid+'] '+p.name+' | '+p.flag.toUpperCase());
+}
+function killSelected(){
+  if(!selectedPid){addEvent('ERROR','LOW','No process selected');return;}
+  const p=PROCESSES.find(x=>x.pid===selectedPid);
+  if(!p) return;
+  if(p.flag==='system'){addEvent('ERROR','HIGH','Cannot terminate system process: '+p.name);return;}
+  PROCESSES=PROCESSES.filter(x=>x.pid!==selectedPid);
+  addEvent('ACTION','HIGH','Process terminated: [PID:'+p.pid+'] '+p.name);
+  selectedPid=null;
+  buildProcTable();
+}
+function analyzeSelected(){
+  if(!selectedPid){addEvent('ERROR','LOW','No process selected');return;}
+  const p=PROCESSES.find(x=>x.pid===selectedPid);
+  if(!p) return;
+  const msgs={
+    malicious:'MALICIOUS — Flagged by behavioral rules. Process is spawning suspicious child processes and making outbound connections to known-bad IPs.',
+    suspicious:'SUSPICIOUS — Unusual parent-child relationship. PowerShell with encoded arguments detected. Recommend investigation.',
+    clean:'CLEAN — No malicious indicators detected. Process behavior within expected baseline.',
+    system:'SYSTEM — Core Windows process. Do not terminate.'
+  };
+  addEvent('ANALYSIS','MED','['+p.name+'] '+msgs[p.flag]);
+}
+function quarantine(){
+  if(!selectedPid){addEvent('ERROR','LOW','No process selected');return;}
+  const p=PROCESSES.find(x=>x.pid===selectedPid);
+  if(!p) return;
+  addEvent('ACTION','HIGH','Quarantine initiated for: [PID:'+p.pid+'] '+p.name+' — binary moved to quarantine store');
+}
+
+// ── NETWORK CONNECTIONS ───────────────────────────────────────────────────────
+const KNOWN_BAD_IPS=new Set(['185.220.101.5','45.142.212.100','185.234.218.48','91.108.4.1']);
+const CONNECTIONS_BASE=[
+  {proto:'TCP',localAddr:'192.168.1.15',localPort:49201,remoteAddr:'8.8.8.8',remotePort:53,  state:'ESTABLISHED',pid:820, proc:'svchost.exe',    threat:'CLEAN'},
+  {proto:'TCP',localAddr:'192.168.1.15',localPort:49333,remoteAddr:'142.250.185.46',remotePort:443,state:'ESTABLISHED',pid:2841,proc:'chrome.exe','threat':'CLEAN'},
+  {proto:'TCP',localAddr:'192.168.1.15',localPort:49400,remoteAddr:'185.220.101.5',remotePort:4444,state:'ESTABLISHED',pid:4444,proc:'nc.exe',   threat:'MALICIOUS — Known C2 IP'},
+  {proto:'TCP',localAddr:'192.168.1.15',localPort:49501,remoteAddr:'185.234.218.48',remotePort:443,state:'SYN_SENT',  pid:4192,proc:'update.exe',threat:'MALICIOUS — Known threat actor'},
+  {proto:'TCP',localAddr:'0.0.0.0',     localPort:445,  remoteAddr:'*',           remotePort:0,   state:'LISTEN',    pid:4,   proc:'System',      threat:'CLEAN'},
+  {proto:'TCP',localAddr:'0.0.0.0',     localPort:3389, remoteAddr:'*',           remotePort:0,   state:'LISTEN',    pid:820, proc:'svchost.exe',  threat:'HIGH — RDP exposed'},
+  {proto:'TCP',localAddr:'192.168.1.15',localPort:49600,remoteAddr:'192.168.1.5', remotePort:445, state:'ESTABLISHED',pid:7200,proc:'svch0st.exe',threat:'CRITICAL — Lateral movement to DC'},
+  {proto:'TCP',localAddr:'192.168.1.15',localPort:49700,remoteAddr:'91.108.4.1',  remotePort:443, state:'ESTABLISHED',pid:6001,proc:'mshta.exe',  threat:'MALICIOUS — Known bad IP'},
+  {proto:'UDP',localAddr:'192.168.1.15',localPort:137,  remoteAddr:'*',           remotePort:0,   state:'LISTEN',    pid:4,   proc:'System',      threat:'CLEAN'},
+  {proto:'TCP',localAddr:'192.168.1.15',localPort:49800,remoteAddr:'10.0.0.99',   remotePort:1433,state:'SYN_SENT',  pid:3100,proc:'powershell.exe',threat:'SUSPICIOUS — DB port from PS'},
+];
+let CONNECTIONS=[...CONNECTIONS_BASE];
+let selectedConnRow=null;
+
+function buildConnTable(){
+  const search=(document.getElementById('net-search')||{}).value||'';
+  const filter=(document.getElementById('conn-filter')||{}).value||'ALL';
+  let conns=CONNECTIONS;
+  if(search) conns=conns.filter(c=>
+    c.remoteAddr.includes(search)||String(c.remotePort).includes(search)||c.proc.includes(search));
+  if(filter!=='ALL') conns=conns.filter(c=>c.state===filter);
+  const el=document.getElementById('conn-count');
+  if(el) el.textContent=conns.length+' connections';
+  document.getElementById('tc-net').textContent=CONNECTIONS.filter(c=>c.threat.startsWith('MALICIOUS')||c.threat.startsWith('CRITICAL')).length;
+  const tbody=document.getElementById('conn-tbody');
+  tbody.innerHTML='';
+  conns.forEach((c,i)=>{
+    const tr=document.createElement('tr');
+    tr.addEventListener('click',()=>{selectedConnRow=i;addEvent(c.threat.startsWith('MALICIOUS')||c.threat.startsWith('CRITICAL')?'ALERT':'INFO',c.threat.startsWith('MALICIOUS')||c.threat.startsWith('CRITICAL')?'CRIT':'LOW','Connection: '+c.localAddr+':'+c.localPort+' -> '+c.remoteAddr+':'+c.remotePort+' ['+c.proc+']');});
+    const threatColor=c.threat.startsWith('MALICIOUS')||c.threat.startsWith('CRITICAL')?'var(--red)':c.threat.startsWith('HIGH')||c.threat.startsWith('SUSPICIOUS')?'var(--orange)':'var(--green)';
+    tr.innerHTML='<td>'+e(c.proto)+'</td>'
+      +'<td>'+e(c.localAddr)+'</td>'
+      +'<td>'+e(c.localPort)+'</td>'
+      +'<td style="'+(KNOWN_BAD_IPS.has(c.remoteAddr)?'color:var(--red);font-weight:bold':'')+'">'+e(c.remoteAddr)+'</td>'
+      +'<td>'+e(c.remotePort)+'</td>'
+      +'<td><span class="conn-'+e(c.state)+'">'+e(c.state)+'</span></td>'
+      +'<td>'+e(c.pid)+'</td>'
+      +'<td>'+e(c.proc)+'</td>'
+      +'<td style="color:'+threatColor+';font-size:10px">'+e(c.threat)+'</td>';
+    tbody.appendChild(tr);
+  });
+}
+function filterConns(){buildConnTable();}
+function blockConn(){addEvent('ACTION','HIGH','Connection block rule created — traffic to selected remote IP blocked at host firewall');}
+function traceRoute(){addEvent('INFO','LOW','Trace route initiated for selected remote address — results in event log');}
+
+// ── REGISTRY MONITOR ──────────────────────────────────────────────────────────
+const REG_TREE=[
+  {key:'HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run',
+   flagged:true,badge:'MALWARE',
+   values:[
+    {name:'WindowsUpdate',    type:'REG_SZ', data:'C:\\Windows\\Temp\\update.exe',           flagged:true,  level:'malicious'},
+    {name:'OneDrive',         type:'REG_SZ', data:'C:\\Users\\jsmith\\AppData\\Local\\Microsoft\\OneDrive\\OneDrive.exe', flagged:false, level:'clean'},
+    {name:'SecurityHealth',   type:'REG_SZ', data:'C:\\Windows\\System32\\SecurityHealth.exe',flagged:false, level:'clean'},
+    {name:'SvcHlp',           type:'REG_SZ', data:'C:\\Windows\\System32\\svch0st.exe -svc',  flagged:true,  level:'malicious'},
+  ]},
+  {key:'HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\RunOnce',
+   flagged:false,badge:null,
+   values:[
+    {name:'(Default)',type:'REG_SZ',data:'(value not set)',flagged:false,level:'clean'},
+  ]},
+  {key:'HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Services',
+   flagged:true,badge:'NEW',
+   values:[
+    {name:'WinSvc32',   type:'REG_SZ', data:'C:\\Windows\\System32\\svch0st.exe -netsvcs',flagged:true, level:'malicious'},
+    {name:'BFE',        type:'REG_SZ', data:'Base Filtering Engine — legitimate',          flagged:false,level:'clean'},
+    {name:'Dhcp',       type:'REG_SZ', data:'DHCP Client — legitimate',                   flagged:false,level:'clean'},
+  ]},
+  {key:'HKEY_CURRENT_USER\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\RunMRU',
+   flagged:false,badge:null,
+   values:[
+    {name:'a',type:'REG_SZ',data:'powershell -EncodedCommand [base64-encoded-payload]',flagged:true,level:'suspicious'},
+    {name:'b',type:'REG_SZ',data:'cmd /c whoami',flagged:true,level:'suspicious'},
+    {name:'c',type:'REG_SZ',data:'notepad',flagged:false,level:'clean'},
+  ]},
+  {key:'HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Image File Execution Options',
+   flagged:false,badge:null,
+   values:[
+    {name:'sethc.exe',    type:'REG_SZ',data:'Debugger: cmd.exe',flagged:true,level:'malicious'},
+    {name:'utilman.exe',  type:'REG_SZ',data:'Debugger: cmd.exe',flagged:true,level:'malicious'},
+  ]},
+];
+
+let expandedKeys=new Set([0]);
+function buildRegTree(){
+  const tree=document.getElementById('reg-tree');
+  tree.innerHTML='';
+  REG_TREE.forEach((entry,ki)=>{
+    const keyDiv=document.createElement('div');
+    keyDiv.className='reg-key';
+    const expanded=expandedKeys.has(ki);
+    const nameDiv=document.createElement('div');
+    nameDiv.className='reg-key-name'+(entry.flagged?' flagged':'')+(expanded?' expanded':'');
+    nameDiv.innerHTML='<span class="reg-toggle">'+(expanded?'▼':'▶')+'</span>'
+      +'<span class="reg-icon">📁</span>'
+      +'<span class="reg-label">'+e(entry.key)+'</span>'
+      +(entry.badge?'<span class="reg-badge rb-'+e(entry.badge.toLowerCase())+'">' +e(entry.badge)+'</span>':'');
+    nameDiv.addEventListener('click',()=>{
+      if(expandedKeys.has(ki)) expandedKeys.delete(ki); else expandedKeys.add(ki);
+      buildRegTree();
+    });
+    keyDiv.appendChild(nameDiv);
+    if(expanded){
+      const vals=document.createElement('div');
+      vals.className='reg-values';
+      entry.values.forEach(v=>{
+        const vDiv=document.createElement('div');
+        vDiv.className='reg-value'+(v.flagged?' flagged':'');
+        vDiv.innerHTML='<span class="rv-name">'+e(v.name)+'</span>'
+          +'<span class="rv-type">'+e(v.type)+'</span>'
+          +'<span class="rv-data '+e(v.level)+'">'+e(v.data)+'</span>';
+        vDiv.addEventListener('click',()=>addEvent(
+          v.level==='malicious'?'ALERT':v.level==='suspicious'?'WARN':'INFO',
+          v.level==='malicious'?'CRIT':v.level==='suspicious'?'HIGH':'LOW',
+          'Registry value accessed: '+v.name+' = '+v.data));
+        vals.appendChild(vDiv);
+      });
+      keyDiv.appendChild(vals);
+    }
+    tree.appendChild(keyDiv);
+  });
+}
+
+// ── KILL CHAIN ────────────────────────────────────────────────────────────────
+const KC_PHASES=[
+  {name:'Reconnaissance',status:'breached',
+   desc:'The attacker conducted extensive OSINT against the organization. LinkedIn profiles revealed the finance team uses SAP. Job postings exposed the internal VPN product. Email addresses were harvested from public records. The attacker identified jsmith as a target due to their visible project role.',
+   iocs:['Unusual Shodan queries targeting your ASN','DNS zone transfer attempts from external IP','LinkedIn scraping activity on employee profiles','WHOIS queries for internal domain names'],
+   detection:'Monitor threat intelligence feeds for queries targeting your ASN. Watch for DNS reconnaissance (AXFR requests). Set up alerts on Google dorking patterns targeting your domain.',
+   mitre:['T1595 - Active Scanning','T1589 - Gather Victim Identity Information','T1593 - Search Open Websites/Domains'],
+   scenario:[
+     {kind:'attack',txt:'Attacker queries Shodan for the organization IP range: 192.168.1.0/24'},
+     {kind:'attack',txt:'LinkedIn OSINT identifies jsmith as Finance Analyst with SAP access'},
+     {kind:'attack',txt:'Email format discovered: firstname.lastname@corp.example.com'},
+     {kind:'attack',txt:'WHOIS lookup reveals VPN endpoint: vpn.corp.example.com'},
+   ]},
+  {name:'Weaponization',status:'breached',
+   desc:'Using the reconnaissance data, the attacker crafted a spear-phishing email appearing to come from the SAP vendor, referencing a specific project jsmith posted about. A macro-enabled Excel spreadsheet was built that drops a second-stage payload on open. The malware was tested against VirusTotal until no engines detected it.',
+   iocs:['No direct IOCs visible to defender at this stage','Attacker is operating in their own infrastructure'],
+   detection:'No direct detection at this stage. Defend by hardening delivery controls: disable macros by policy, implement email authentication (SPF, DKIM, DMARC), train users on spear-phishing recognition.',
+   mitre:['T1566.001 - Spear Phishing Attachment','T1027 - Obfuscated Files or Information'],
+   scenario:[
+     {kind:'attack',txt:'Attacker builds macro-enabled Excel file referencing jsmith project'},
+     {kind:'attack',txt:'Payload tested against antivirus — repackaged until no detections'},
+     {kind:'attack',txt:'C2 server provisioned at domain registered 2 days ago'},
+   ]},
+  {name:'Delivery',status:'breached',
+   desc:'The spear-phishing email was sent to jsmith from a spoofed SAP vendor address. The email passed SPF checks due to a misconfigured DNS record. jsmith received the email referencing their Q4 project and opened the attachment. The macro ran automatically because macros were not disabled by Group Policy.',
+   iocs:['Email from non-standard domain spoofing known vendor','Macro-enabled document opened outside business hours','Email gateway allowed despite failed DMARC'],
+   detection:'Check email gateway logs for DMARC failures. Alert on macro-enabled Office documents opened by users. Monitor for Office spawning unusual child processes immediately after document open.',
+   mitre:['T1566.001 - Spear Phishing Attachment','T1204.002 - User Execution: Malicious File'],
+   scenario:[
+     {kind:'attack',txt:'Phishing email lands in jsmith inbox — passes SPF due to misconfigured DNS'},
+     {kind:'attack',txt:'jsmith opens SAP_Q4_Report.xlsm — enables macros when prompted'},
+     {kind:'defend',txt:'Detection opportunity: Office process spawning cmd.exe — not alerted (rule gap)'},
+   ]},
+  {name:'Exploitation',status:'breached',
+   desc:'The macro executed VBA code that launched cmd.exe, which called PowerShell with an encoded command that downloaded the second stage payload from the C2 server. The payload exploited an unpatched Windows vulnerability (CVE in Print Spooler service) to escalate from user to SYSTEM privileges.',
+   iocs:['Office process spawning cmd.exe or PowerShell','PowerShell -EncodedCommand execution','Outbound connection within seconds of document open','LSASS access by non-system process'],
+   detection:'CRITICAL: Alert on Office applications spawning scripting interpreters. Enable PowerShell script block logging (Event ID 4104). Alert on privilege escalation from user to SYSTEM by non-OS process.',
+   mitre:['T1059.001 - PowerShell','T1055 - Process Injection','T1068 - Exploitation for Privilege Escalation'],
+   scenario:[
+     {kind:'attack',txt:'Excel.exe -> cmd.exe -> powershell.exe -EncodedCommand [payload]'},
+     {kind:'attack',txt:'PowerShell downloads update.exe from C2 server'},
+     {kind:'attack',txt:'update.exe exploits Print Spooler vulnerability — SYSTEM privileges obtained'},
+     {kind:'defend',txt:'Detection: SIEM fires alert on Office->PowerShell chain — L1 analyst assigned'},
+   ]},
+  {name:'Installation',status:'active',
+   desc:'The payload installed persistence via two mechanisms: a Run registry key disguised as "WindowsUpdate" and a Windows service named "WinSvc32" using a typosquatted binary (svch0st.exe). The malware also installed a reverse shell binary (nc.exe) in AppData and modified the IFEO registry key to add a debugger entry on accessibility tools.',
+   iocs:['New Run key entry: HKLM\\Run\\WindowsUpdate -> C:\\Windows\\Temp\\update.exe','New service: WinSvc32 using svch0st.exe','Binary in C:\\Windows\\Temp with .exe extension','IFEO modification on sethc.exe or utilman.exe'],
+   detection:'ACTIVE THREAT: Registry persistence detected. Alert on new Run key entries by non-installer processes. Monitor service creation (Event ID 7045). Alert on IFEO modifications — often used to bypass authentication screens.',
+   mitre:['T1547.001 - Registry Run Keys','T1543.003 - Create/Modify System Process: Windows Service','T1546.012 - Image File Execution Options Injection'],
+   scenario:[
+     {kind:'attack',txt:'update.exe writes HKLM\\Run\\WindowsUpdate persistence key'},
+     {kind:'attack',txt:'svch0st.exe installed as WinSvc32 Windows service'},
+     {kind:'attack',txt:'sethc.exe IFEO entry added — cmd.exe will appear on RDP lock screen'},
+     {kind:'defend',txt:'Registry monitor fires: New Run key created by non-admin process — INVESTIGATING'},
+   ]},
+  {name:'Command & Control',status:'active',
+   desc:'The malware established an encrypted HTTPS beacon to a C2 server. The beacon interval is 30 seconds with randomized jitter. DNS beaconing is used as a fallback channel. The attacker currently has interactive access to the compromised host and is conducting internal reconnaissance via WMI queries.',
+   iocs:['Periodic outbound HTTPS to new domain at exact interval','DNS queries with high-entropy subdomains (DGA pattern)','Internal WMI queries from compromised host','NTLM authentication attempts to domain controller'],
+   detection:'ACTIVE: Beacon detected. Jitter analysis of HTTPS connections shows 28-32 second intervals to newly registered domain. DGA domain identified in threat intel feed. Block C2 IPs at firewall immediately.',
+   mitre:['T1071.001 - Web Protocols (C2)','T1568 - Dynamic Resolution (DGA)','T1082 - System Information Discovery'],
+   scenario:[
+     {kind:'attack',txt:'update.exe beacons to 185.220.101.5:443 every 30s — encrypted HTTPS'},
+     {kind:'attack',txt:'DNS fallback: queries to [random].c2-domain.example every 60s'},
+     {kind:'attack',txt:'Attacker runs: wmic process list, net user, ipconfig /all via C2'},
+     {kind:'defend',txt:'Network detection: beacon interval identified — C2 IP matches threat intel feed'},
+   ]},
+  {name:'Actions on Objectives',status:'pending',
+   desc:'Based on current indicators, the attacker is in the lateral movement preparation stage. They have harvested credentials from LSASS and are attempting to authenticate to the domain controller (SRV-DC-01 at 192.168.1.5). If the domain controller is compromised, the attacker will have access to all organizational data. IMMEDIATE CONTAINMENT REQUIRED.',
+   iocs:['LSASS dump by nc.exe (PID 4444)','Lateral SMB connection to domain controller (192.168.1.5:445)','Pass-the-hash authentication pattern from workstation','SVN connections to file server outside business hours'],
+   detection:'IMMEDIATE ACTION: Isolate WS-FINANCE-01 from network NOW. Reset all domain admin credentials. Review DC security logs for unauthorized access. Deploy memory forensics to confirm credential theft scope.',
+   mitre:['T1003.001 - OS Credential Dumping: LSASS Memory','T1021.002 - Remote Services: SMB/Windows Admin Shares','T1550.002 - Pass the Hash'],
+   scenario:[
+     {kind:'attack',txt:'nc.exe reads LSASS memory — domain admin credential hash extracted'},
+     {kind:'attack',txt:'Pass-the-hash attempt to SRV-DC-01:445 — attempting domain takeover'},
+     {kind:'defend',txt:'CONTAIN: Isolate host, reset credentials, forensics team engaged'},
+     {kind:'defend',txt:'Incident Response: active — L2 analyst + IR team on call'},
+   ]},
+];
+
+let activeKcPhase=0;
+
+function buildKcPhases(){
+  const el=document.getElementById('kc-phases');
+  el.innerHTML='';
+  KC_PHASES.forEach((p,i)=>{
+    const div=document.createElement('div');
+    div.className='kc-phase '+(i===activeKcPhase?'active ':'')+p.status;
+    div.addEventListener('click',()=>{activeKcPhase=i;buildKcPhases();showKcDetail(i);});
+    const dotClass={breached:'dot-breached',active:'dot-active',pending:'dot-pending',defended:'dot-defended'}[p.status];
+    div.innerHTML='<div class="kc-num">Phase '+(i+1)+'</div>'
+      +'<div class="kc-name"><span class="kc-status-dot '+dotClass+'"></span>'+e(p.name)+'</div>';
+    el.appendChild(div);
+  });
+  showKcDetail(activeKcPhase);
+}
+
+function showKcDetail(i){
+  const p=KC_PHASES[i];
+  const slClass={breached:'sl-breached',active:'sl-active',pending:'sl-pending',defended:'sl-defended'}[p.status];
+  const el=document.getElementById('kc-detail');
+  const statusLabel={breached:'BREACHED',active:'ACTIVE — RESPONDING',pending:'PENDING',defended:'DEFENDED'}[p.status];
+  let html='<div class="kc-detail-header">'
+    +'<div style="display:flex;align-items:center;gap:10px">'
+    +'<h2>Phase '+(i+1)+': '+e(p.name)+'</h2>'
+    +'<span class="status-label '+slClass+'">'+e(statusLabel)+'</span>'
+    +'</div></div>'
+    +'<div class="section-title">Description</div>'
+    +'<div class="kc-desc">'+e(p.desc)+'</div>'
+    +'<div class="section-title">Indicators of Compromise</div>'
+    +'<div class="ioc-grid">'+p.iocs.map(ioc=>'<span class="ioc-chip">'+e(ioc)+'</span>').join('')+'</div>'
+    +'<div class="detection-box"><strong>SOC Detection Action:</strong> '+e(p.detection)+'</div>'
+    +'<div class="section-title">MITRE ATT&amp;CK Techniques</div>'
+    +'<div class="mitre-box"><div class="mitre-label">TECHNIQUE IDs</div>'+p.mitre.map(m=>e(m)).join('<br>')+'</div>'
+    +'<div class="section-title">Scenario Step-by-Step</div>'
+    +'<div class="scenario-steps">';
+  p.scenario.forEach((s,si)=>{
+    html+='<div class="sc-step '+e(s.kind)+'">'
+      +'<div class="sc-step-num">'+(si+1)+'</div>'
+      +'<div class="sc-step-text">'+e(s.txt)+'</div>'
+      +'</div>';
+  });
+  html+='</div>';
+  el.innerHTML=html;
+}
+
+// ── INSIDER THREAT ANALYZER ───────────────────────────────────────────────────
+const USERS=[
+  {name:'James Smith',  role:'Finance Analyst',   dept:'Finance',   avatar:'JS', risk:92, color:'#ff2d55',
+   iocs:['After-hours access x14','Large data download','USB device 3x','Login from new geo','Bulk email to personal']},
+  {name:'Maria Wilson', role:'HR Generalist',      dept:'HR',        avatar:'MW', risk:65, color:'#ff8c00',
+   iocs:['Off-hours access x6','LinkedIn scraping','Unusual file access']},
+  {name:'David Chen',   role:'Senior Developer',   dept:'Engineering',avatar:'DC', risk:38, color:'#ffd60a',
+   iocs:['Prod access from dev machine','Late night commits']},
+  {name:'Sarah Lee',    role:'Account Executive',  dept:'Sales',     avatar:'SL', risk:15, color:'#30d158',
+   iocs:['Normal activity pattern']},
+  {name:'Robert Zhang', role:'IT Administrator',   dept:'IT Ops',    avatar:'RZ', risk:71, color:'#ff8c00',
+   iocs:['Admin account after hours','Disabled audit log x2','New admin account created']},
+  {name:'Emma Johnson', role:'Executive Assistant', dept:'Executive', avatar:'EJ', risk:20, color:'#30d158',
+   iocs:['Normal activity pattern']},
+];
+
+const ACTIVITIES=[
+  {user:'James Smith',  icon:'📤', action:'Bulk file download from finance share',  detail:'847 files, 4.2GB in 22 minutes',           time:'02:14:33', sev:'CRITICAL',color:'var(--red)'},
+  {user:'James Smith',  icon:'🔌', action:'USB storage device inserted',             detail:'Generic_USB_Drive SN:7F3A9B2C',             time:'02:16:01', sev:'HIGH',   color:'var(--orange)'},
+  {user:'Robert Zhang', icon:'🔑', action:'Audit log disabled on SRV-DC-01',        detail:'Security audit policy modified',           time:'01:55:12', sev:'CRITICAL',color:'var(--red)'},
+  {user:'James Smith',  icon:'📧', action:'Email with attachment to personal account',detail:'jsmith.personal@gmail.com — 48 attachments',time:'02:28:44',sev:'CRITICAL',color:'var(--red)'},
+  {user:'Maria Wilson', icon:'🌍', action:'Login from unexpected geography',         detail:'IP geolocated to Eastern Europe',           time:'23:44:01', sev:'HIGH',   color:'var(--orange)'},
+  {user:'Robert Zhang', icon:'👤', action:'New admin account created',               detail:'Account: svc_backup_temp — undocumented',  time:'01:12:30', sev:'HIGH',   color:'var(--orange)'},
+  {user:'David Chen',   icon:'🖥️', action:'Production DB access from dev machine',   detail:'Direct SQL query on prod_financial_db',    time:'22:15:05', sev:'MEDIUM', color:'var(--yellow)'},
+  {user:'James Smith',  icon:'🔍', action:'Directory enumeration on file server',    detail:'15,000 recursive LDAP queries in 5 min',   time:'02:31:22', sev:'HIGH',   color:'var(--orange)'},
+  {user:'Maria Wilson', icon:'📋', action:'HR records accessed outside role scope',  detail:'Executive compensation table accessed',     time:'23:48:55', sev:'MEDIUM', color:'var(--yellow)'},
+  {user:'Robert Zhang', icon:'🔓', action:'Security software disabled on 3 hosts',  detail:'Windows Defender disabled via GPO change', time:'00:44:19', sev:'CRITICAL',color:'var(--red)'},
+];
+
+let selectedUserIdx=null;
+
+function buildInsider(){
+  // User grid
+  const grid=document.getElementById('user-grid');
+  grid.innerHTML='';
+  USERS.forEach((u,i)=>{
+    const card=document.createElement('div');
+    card.className='user-card'+(u.risk>70?' high-risk':'')+(i===selectedUserIdx?' selected':'');
+    card.addEventListener('click',()=>{selectedUserIdx=i;buildInsider();addEvent('INFO','LOW','User profile selected: '+u.name+' — Risk score: '+u.risk+'/100');});
+    const riskPct=u.risk;
+    const riskColor=riskPct>70?'var(--red)':riskPct>40?'var(--orange)':'var(--green)';
+    card.innerHTML='<div class="uc-header">'
+      +'<div class="uc-avatar" style="background:'+u.color+'22;color:'+u.color+'">'+e(u.avatar)+'</div>'
+      +'<div class="uc-info"><div class="uc-name">'+e(u.name)+'</div><div class="uc-role">'+e(u.role)+' — '+e(u.dept)+'</div></div>'
+      +'</div>'
+      +'<div class="risk-meter">'
+      +'<span class="risk-label">Risk</span>'
+      +'<div class="risk-track"><div class="risk-fill" style="width:'+riskPct+'%;background:'+riskColor+'"></div></div>'
+      +'<span class="risk-score" style="color:'+riskColor+'">'+riskPct+'</span>'
+      +'</div>'
+      +'<div class="ioc-flags">'+u.iocs.map((ioc,fi)=>'<span class="ioc-flag'+(fi===0&&u.risk>70?' critical':'')+'">'+e(ioc)+'</span>').join('')+'</div>';
+    grid.appendChild(card);
+  });
+
+  // Activity feed
+  const feed=document.getElementById('activity-feed');
+  feed.innerHTML='';
+  const activities=selectedUserIdx!==null
+    ? ACTIVITIES.filter(a=>a.user===USERS[selectedUserIdx].name)
+    : ACTIVITIES;
+  activities.forEach(a=>{
+    const item=document.createElement('div');
+    item.className='activity-item';
+    const sevClass={CRITICAL:'pf-malicious',HIGH:'pf-suspicious',MEDIUM:'pf-clean'}[a.sev]||'pf-system';
+    item.innerHTML='<span class="activity-icon">'+e(a.icon)+'</span>'
+      +'<div class="activity-info">'
+      +'<div class="ai-action" style="color:'+a.color+'">'+e(a.action)+'</div>'
+      +'<div class="ai-detail">'+e(a.detail)+'</div>'
+      +'<div style="display:flex;gap:6px;align-items:center;margin-top:3px">'
+      +'<div class="ai-time">'+e(a.time)+'</div>'
+      +'<span class="proc-flag '+sevClass+'" style="font-size:9px">'+e(a.sev)+'</span>'
+      +'<span style="font-size:10px;color:var(--dim)">'+e(a.user)+'</span>'
+      +'</div></div>';
+    feed.appendChild(item);
+  });
+}
+
+// ── EVENT LOG ─────────────────────────────────────────────────────────────────
+function addEvent(type,sev,msg){
+  const log=document.getElementById('event-log');
+  const item=document.createElement('div');
+  item.className='ev-item';
+  const sevColors={CRIT:'var(--red)',HIGH:'var(--orange)',MED:'var(--yellow)',LOW:'var(--accent)'};
+  item.innerHTML='<span class="ev-time">'+e(new Date().toLocaleTimeString('en-GB'))+'</span>'
+    +'<span class="ev-sev '+e(sev)+'" style="color:'+sevColors[sev]+'">'+e(sev)+'</span>'
+    +'<span class="ev-msg">'+e(msg)+'</span>';
+  log.insertBefore(item,log.firstChild);
+  while(log.children.length>150) log.removeChild(log.lastChild);
+}
+function clearLog(){document.getElementById('event-log').innerHTML='';}
+function exportLog(){addEvent('INFO','LOW','Event log exported to: incident_log_'+new Date().toISOString().slice(0,10)+'.csv');}
+
+// ── LIVE UPDATE ───────────────────────────────────────────────────────────────
+function liveUpdate(){
+  // Fluctuate CPU values slightly
+  PROCESSES=PROCESSES.map(p=>({...p,cpu:Math.max(0,p.cpu+(Math.random()-.5)*0.5)}));
+  // Occasionally add a new suspicious connection
+  if(Math.random()<0.15){
+    const ports=[4444,8080,1337,31337,4321];
+    const randomPort=ports[Math.floor(Math.random()*ports.length)];
+    addEvent('ALERT','HIGH','New outbound connection attempt: 192.168.1.15 -> [external]:'+randomPort);
+  }
+  buildProcTable();
+  buildConnTable();
+}
+
+// ── INIT ──────────────────────────────────────────────────────────────────────
+window.onload=function(){
+  buildHostList();
+  buildProcTable();
+  buildConnTable();
+  buildRegTree();
+  buildKcPhases();
+  buildInsider();
+  // Initial events
+  addEvent('ALERT','CRIT','MALWARE DETECTED on WS-FINANCE-01 — Process: update.exe [PID:4192]');
+  addEvent('ALERT','CRIT','C2 BEACON ACTIVE — 192.168.1.15:49400 -> 185.220.101.5:4444 [nc.exe]');
+  addEvent('ALERT','HIGH','Registry persistence created — HKLM\\Run\\WindowsUpdate -> C:\\Windows\\Temp\\update.exe');
+  addEvent('ALERT','HIGH','Lateral movement attempt — svch0st.exe -> SRV-DC-01:445');
+  addEvent('WARN','HIGH','Insider threat alert — jsmith: 4.2GB bulk download at 02:14 outside business hours');
+  addEvent('ALERT','CRIT','Privilege escalation — update.exe acquired SYSTEM privileges via Print Spooler exploit');
+  addEvent('INFO','LOW','Live System Analysis Console initialized — monitoring 9 hosts');
+  // Start live update
+  setInterval(liveUpdate,3000);
+};
+</script>
+</body>
+</html>
