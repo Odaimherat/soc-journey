@@ -4,41 +4,33 @@ A daily, hands-on deep dive into Security Operations — building real tools, wr
 
 ---
 
-## Topics Covered
-
-| Day | Topic | Lab |
-|-----|-------|-----|
-| 01 | Security Operations and Management — SOC Foundations | [Day 01](day-01/) |
-| 02 | SOC Processes, Models, Maturity, and KPIs | [Day 02](day-02/) |
-| 03 | Cyber Threats, IoCs, TTPs, and Attack Methodology | [Day 03](day-03/) |
-| 04 | Password Attacks, Malware Types, APTs, and Protocol-Level Attacks | [Day 04](day-04/) |
-| 05 | Application-Level Attacks, IoC Detection, and Web Security | [Day 05](day-05/) |
-| 06 | IoC Detection Techniques, Live System Analysis, and Hacking Methodology | [Day 06](day-06/) |
-
----
-
 ## GUI Labs — Open in Any Browser
+
+| Day | Topic | Lab File |
+|-----|-------|----------|
+| 03 | Cyber Threats and Attack Methodology | [siem_threat_dashboard.html](day-03/lab/) |
+| 04 | Password Attacks, Malware, APTs | [apt_malware_workbench.html](day-04/lab/) |
+| 05 | Web Application Security | [webapp_security_lab.html](day-05/lab/) |
+| 06 | Live System Analysis and Kill Chain | [live_analysis_console.html](day-06/lab/) |
+| 07 | Incidents, Events, and Log Management | [siem_log_platform.html](day-07/lab/) |
 
 ```bash
 git clone https://github.com/Odaimherat/soc-journey
-
-# Day 03 — Live SIEM Dashboard
-open day-03/lab/siem_threat_dashboard.html
-
-# Day 04 — APT and Malware Analysis Workbench
-open day-04/lab/apt_malware_workbench.html
-
-# Day 05 — Web Application Security Lab
-open day-05/lab/webapp_security_lab.html
-
-# Day 06 — Live System Analysis Console
-open day-06/lab/live_analysis_console.html
+open day-07/lab/siem_log_platform.html   # Wazuh/Splunk-style SIEM platform
 ```
 
-No install. No server. Open the HTML file and start analyzing.
+All labs open in any browser. No install or server required.
 
 ---
 
-## About
+## Topics Covered
 
-Practical security operations content — educational simulations built to develop real SOC analyst skills. Every concept is explained with cited sources and visualized with working tools.
+| Day | Module | Topic |
+|-----|--------|-------|
+| 01 | 01 | Security Operations and Management |
+| 02 | 01 | SOC Processes, Models, Maturity, and KPIs |
+| 03 | 02 | Cyber Threats, IoCs, and TTPs |
+| 04 | 02 | Password Attacks, Malware, APTs |
+| 05 | 02 | Application-Level Attacks and IoC Detection |
+| 06 | 02 | Live System Analysis and Hacking Methodology |
+| 07 | 02-03 | Kill Chain Deep Dive, Incidents, Events, and Logging |
