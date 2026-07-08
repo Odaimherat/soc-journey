@@ -1,0 +1,1126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src 'none'; connect-src 'none'; form-action 'none'; base-uri 'none';">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SecureSIEM | Incident Detection Platform</title>
+<style>
+/* ─── DESIGN SYSTEM: Splunk/QRadar/ArcSight inspired ─────────────────────── */
+:root{
+  --bg:#0b0e1a; --sidebar:#0f1320; --panel:#141928; --panel2:#1a2035;
+  --border:#222d45; --border2:#2c3a5a;
+  --blue:#3b82f6; --blue2:#60a5fa; --blue3:#1d4ed8;
+  --red:#f43f5e; --orange:#f97316; --yellow:#fbbf24;
+  --green:#10b981; --purple:#8b5cf6; --cyan:#06b6d4; --pink:#ec4899;
+  --text:#e2e8f0; --text2:#94a3b8; --text3:#64748b;
+  --mono:'Courier New',monospace; --sans:-apple-system,'Segoe UI',sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+html,body{height:100%;overflow:hidden;}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:12px;display:flex;flex-direction:column;}
+
+/* ── TOP HEADER ── */
+.header{height:44px;background:var(--sidebar);border-bottom:1px solid var(--border);
+  display:flex;align-items:center;padding:0 12px;gap:10px;flex-shrink:0;z-index:50;}
+.h-logo{display:flex;align-items:center;gap:7px;text-decoration:none;}
+.h-logo-box{width:26px;height:26px;background:linear-gradient(135deg,var(--blue),var(--purple));
+  border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:900;color:#fff;}
+.h-logo-text{font-size:14px;font-weight:700;color:var(--text);letter-spacing:-.2px;}
+.h-logo-text span{color:var(--blue2);}
+.h-ver{font-size:10px;color:var(--text3);background:var(--panel2);border:1px solid var(--border);
+  padding:1px 6px;border-radius:3px;}
+.h-search{flex:1;max-width:520px;position:relative;}
+.h-search input{width:100%;background:var(--panel);border:1px solid var(--border);
+  color:var(--text);padding:5px 30px 5px 30px;border-radius:5px;font-size:11px;
+  font-family:var(--mono);outline:none;}
+.h-search input:focus{border-color:var(--blue);}
+.h-search input::placeholder{color:var(--text3);}
+.h-search .search-icon{position:absolute;left:8px;top:50%;transform:translateY(-50%);
+  color:var(--text3);font-size:12px;pointer-events:none;}
+.h-search .search-tag{position:absolute;right:8px;top:50%;transform:translateY(-50%);
+  font-size:9px;color:var(--text3);background:var(--panel2);border:1px solid var(--border);
+  padding:1px 4px;border-radius:2px;font-family:var(--mono);}
+.h-sep{flex:1;}
+.h-pill{display:flex;align-items:center;gap:5px;padding:4px 10px;border-radius:4px;
+  font-size:10px;font-weight:600;letter-spacing:.3px;}
+.h-live{background:rgba(16,185,129,.12);border:1px solid rgba(16,185,129,.3);color:var(--green);}
+.h-live-dot{width:6px;height:6px;border-radius:50%;background:var(--green);animation:blink 1.3s infinite;}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+.h-btn{padding:4px 10px;border-radius:4px;font-size:11px;cursor:pointer;
+  font-family:var(--sans);border:1px solid var(--border);background:var(--panel2);
+  color:var(--text2);transition:all .15s;}
+.h-btn:hover{border-color:var(--blue);color:var(--blue2);}
+.h-btn.primary{background:var(--blue3);border-color:var(--blue);color:#fff;font-weight:600;}
+.h-btn.primary:hover{background:var(--blue);}
+#hclock{font-size:11px;color:var(--text3);font-family:var(--mono);}
+
+/* ── MAIN BODY ── */
+.app{flex:1;display:flex;overflow:hidden;}
+
+/* ── SIDEBAR ── */
+.sidebar{width:210px;background:var(--sidebar);border-right:1px solid var(--border);
+  display:flex;flex-direction:column;overflow-y:auto;flex-shrink:0;}
+.sb-section{padding:10px 8px 4px;}
+.sb-label{font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;
+  letter-spacing:1.2px;padding:0 6px;margin-bottom:4px;}
+.sb-item{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:5px;
+  cursor:pointer;color:var(--text2);font-size:11px;font-weight:500;transition:all .15s;}
+.sb-item:hover{background:rgba(255,255,255,.04);color:var(--text);}
+.sb-item.active{background:rgba(59,130,246,.12);color:var(--blue2);}
+.sb-item .ic{width:14px;text-align:center;font-size:12px;flex-shrink:0;}
+.sb-badge{margin-left:auto;font-size:9px;font-weight:700;padding:1px 5px;border-radius:8px;}
+.sb-badge.red{background:rgba(244,63,94,.2);color:var(--red);}
+.sb-badge.orange{background:rgba(249,115,22,.18);color:var(--orange);}
+.sb-badge.dim{background:var(--panel2);color:var(--text3);}
+.sb-divider{border-top:1px solid var(--border);margin:6px 0;}
+.sb-source-item{display:flex;align-items:center;gap:7px;padding:5px 8px;color:var(--text3);font-size:10px;}
+.sb-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
+.sb-source-count{margin-left:auto;font-family:var(--mono);font-size:10px;}
+
+/* ── CONTENT ── */
+.content{flex:1;display:flex;flex-direction:column;overflow:hidden;}
+.page-tabs{height:36px;background:var(--panel);border-bottom:1px solid var(--border);
+  display:flex;align-items:center;padding:0 12px;gap:0;flex-shrink:0;}
+.ptab{padding:8px 14px;font-size:11px;color:var(--text3);cursor:pointer;
+  border-bottom:2px solid transparent;transition:all .15s;}
+.ptab:hover{color:var(--text2);}
+.ptab.active{color:var(--blue2);border-bottom-color:var(--blue);}
+.ptabs-right{margin-left:auto;display:flex;gap:6px;align-items:center;}
+.trange{background:var(--panel2);border:1px solid var(--border);color:var(--text2);
+  padding:3px 7px;border-radius:4px;font-size:10px;outline:none;}
+
+.pages{flex:1;overflow:hidden;display:flex;flex-direction:column;}
+.page{display:none;flex:1;overflow:auto;flex-direction:column;}
+.page.active{display:flex;}
+
+/* ── CARDS ── */
+.card{background:var(--panel);border:1px solid var(--border);border-radius:7px;overflow:hidden;}
+.card-h{background:rgba(59,130,246,.04);border-bottom:1px solid var(--border);
+  padding:9px 12px;display:flex;align-items:center;justify-content:space-between;}
+.card-title{font-size:11px;font-weight:600;color:var(--text);}
+.card-sub{font-size:10px;color:var(--text3);}
+.bage{font-size:9px;padding:2px 7px;border-radius:4px;font-weight:700;}
+.bage-red{background:rgba(244,63,94,.15);color:var(--red);border:1px solid rgba(244,63,94,.3);}
+.bage-orange{background:rgba(249,115,22,.12);color:var(--orange);border:1px solid rgba(249,115,22,.25);}
+.bage-green{background:rgba(16,185,129,.1);color:var(--green);border:1px solid rgba(16,185,129,.2);}
+.bage-blue{background:rgba(59,130,246,.1);color:var(--blue2);border:1px solid rgba(59,130,246,.2);}
+.bage-dim{background:var(--panel2);color:var(--text3);border:1px solid var(--border);}
+
+/* SIEM CAPABILITY BADGES */
+.cap-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;padding:12px;}
+.cap-card{background:var(--panel2);border:1px solid var(--border);border-radius:6px;
+  padding:10px;text-align:center;cursor:pointer;transition:border-color .2s;}
+.cap-card:hover{border-color:var(--blue);}
+.cap-icon{font-size:20px;margin-bottom:5px;}
+.cap-name{font-size:10px;font-weight:600;color:var(--text);}
+.cap-desc{font-size:9px;color:var(--text3);margin-top:3px;line-height:1.4;}
+
+/* STAT CARDS */
+.stat-row{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;padding:10px 12px;}
+.stat-card{background:var(--panel);border:1px solid var(--border);border-radius:6px;
+  padding:10px;text-align:center;}
+.stat-val{font-size:20px;font-weight:800;line-height:1;}
+.stat-lbl{font-size:9px;color:var(--text3);margin-top:3px;text-transform:uppercase;letter-spacing:.5px;}
+.stat-trend{font-size:9px;margin-top:4px;}
+.trend-up{color:var(--red);}
+.trend-ok{color:var(--green);}
+
+/* LOG TABLE */
+.log-toolbar{padding:7px 10px;background:var(--panel2);border-bottom:1px solid var(--border);
+  display:flex;gap:7px;align-items:center;flex-shrink:0;}
+.lf-input{background:var(--panel);border:1px solid var(--border);color:var(--text);
+  padding:5px 8px;border-radius:4px;font-size:11px;font-family:var(--mono);flex:1;outline:none;}
+.lf-input:focus{border-color:var(--blue);}
+.sev-btn{padding:3px 8px;border-radius:3px;font-size:9px;font-weight:700;cursor:pointer;
+  border:1px solid;transition:all .15s;}
+.sev-ALL{border-color:var(--border);color:var(--text3);}
+.sev-ALL.on,.sev-ALL:hover{background:var(--panel2);color:var(--text);}
+.sev-CRIT{border-color:rgba(244,63,94,.3);color:var(--red);}
+.sev-CRIT.on{background:rgba(244,63,94,.1);}
+.sev-HIGH{border-color:rgba(249,115,22,.3);color:var(--orange);}
+.sev-HIGH.on{background:rgba(249,115,22,.08);}
+.sev-MED{border-color:rgba(251,191,36,.3);color:var(--yellow);}
+.sev-MED.on{background:rgba(251,191,36,.08);}
+.sev-INFO{border-color:rgba(16,185,129,.3);color:var(--green);}
+.sev-INFO.on{background:rgba(16,185,129,.08);}
+.ltable-wrap{overflow-y:auto;flex:1;}
+.ltable{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:11px;}
+.ltable thead th{position:sticky;top:0;background:var(--panel2);padding:5px 8px;
+  text-align:left;font-size:9px;text-transform:uppercase;letter-spacing:.8px;
+  color:var(--text3);border-bottom:1px solid var(--border);font-family:var(--sans);font-weight:600;}
+.ltable tbody tr{border-bottom:1px solid rgba(34,45,69,.5);cursor:pointer;transition:background .1s;}
+.ltable tbody tr:hover{background:rgba(255,255,255,.025);}
+.ltable tbody tr.sel{background:rgba(59,130,246,.07);}
+.ltable td{padding:5px 8px;vertical-align:top;}
+.sevbadge{font-size:9px;font-weight:700;padding:2px 5px;border-radius:3px;white-space:nowrap;}
+.CRITICAL{background:rgba(244,63,94,.18);color:var(--red);}
+.HIGH{background:rgba(249,115,22,.15);color:var(--orange);}
+.MEDIUM{background:rgba(251,191,36,.1);color:var(--yellow);}
+.LOW{background:rgba(16,185,129,.1);color:var(--green);}
+.INFO{background:rgba(59,130,246,.1);color:var(--blue2);}
+
+/* DETAIL PANEL */
+.detail-pane{width:340px;border-left:1px solid var(--border);background:var(--panel);
+  display:flex;flex-direction:column;overflow:hidden;flex-shrink:0;}
+.dp-header{padding:9px 12px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+.dp-title{font-size:11px;font-weight:600;}
+.dp-x{color:var(--text3);cursor:pointer;padding:2px 5px;border-radius:3px;}
+.dp-x:hover{background:var(--panel2);color:var(--red);}
+.dp-body{overflow-y:auto;flex:1;padding:12px;}
+.dp-row{display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid rgba(34,45,69,.5);gap:8px;}
+.dp-key{font-size:10px;color:var(--text3);min-width:100px;flex-shrink:0;}
+.dp-val{font-size:10px;font-family:var(--mono);text-align:right;word-break:break-all;}
+.raw-box{background:var(--bg);border:1px solid var(--border);border-radius:4px;
+  padding:8px;font-family:var(--mono);font-size:9px;line-height:1.6;
+  white-space:pre-wrap;word-break:break-all;color:var(--text3);margin-top:8px;}
+.guidance-box{background:rgba(16,185,129,.06);border:1px solid rgba(16,185,129,.15);
+  border-radius:4px;padding:8px;font-size:10px;line-height:1.6;margin-top:8px;}
+
+/* LOG VIEWER LAYOUT */
+.lv-layout{display:flex;flex:1;overflow:hidden;}
+.lv-left{width:180px;border-right:1px solid var(--border);background:var(--panel);
+  display:flex;flex-direction:column;flex-shrink:0;}
+.lv-sh{padding:7px 10px;border-bottom:1px solid var(--border);font-size:9px;
+  font-weight:600;text-transform:uppercase;letter-spacing:1px;color:var(--text3);}
+.lv-src{padding:7px 10px;border-bottom:1px solid rgba(34,45,69,.4);cursor:pointer;
+  display:flex;align-items:center;gap:7px;transition:background .1s;}
+.lv-src:hover{background:rgba(255,255,255,.03);}
+.lv-src.on{background:rgba(59,130,246,.08);border-left:2px solid var(--blue);}
+.lv-main{flex:1;display:flex;flex-direction:column;overflow:hidden;}
+
+/* USE CASE PAGE */
+.uc-grid{display:grid;grid-template-columns:260px 1fr;height:100%;overflow:hidden;}
+.uc-left{border-right:1px solid var(--border);overflow-y:auto;}
+.uc-item{padding:10px 12px;border-bottom:1px solid rgba(34,45,69,.5);cursor:pointer;transition:background .15s;}
+.uc-item:hover{background:rgba(255,255,255,.025);}
+.uc-item.on{background:rgba(59,130,246,.07);border-left:2px solid var(--blue);}
+.uc-sev{font-size:9px;font-weight:700;padding:1px 5px;border-radius:3px;display:inline-block;margin-bottom:4px;}
+.uc-name{font-size:11px;font-weight:600;line-height:1.3;}
+.uc-meta{font-size:9px;color:var(--text3);margin-top:3px;display:flex;gap:8px;}
+.uc-right{overflow-y:auto;padding:14px;}
+.uc-detail h2{font-size:14px;font-weight:700;margin-bottom:6px;}
+.uc-detail p{font-size:11px;color:var(--text2);line-height:1.7;margin-bottom:10px;}
+.uc-section-title{font-size:9px;text-transform:uppercase;letter-spacing:1.2px;
+  color:var(--text3);margin:12px 0 6px;}
+.logic-box{background:var(--bg);border:1px solid var(--border);border-radius:5px;
+  padding:10px;font-family:var(--mono);font-size:10px;line-height:1.7;color:var(--cyan);}
+.response-box{background:rgba(16,185,129,.06);border:1px solid rgba(16,185,129,.15);
+  border-radius:5px;padding:10px;font-size:10px;line-height:1.7;}
+.response-box strong{color:var(--green);}
+.chip{display:inline-block;padding:2px 8px;border-radius:10px;font-size:9px;margin:2px;font-weight:600;}
+.chip-blue{background:rgba(59,130,246,.1);color:var(--blue2);border:1px solid rgba(59,130,246,.2);}
+.chip-red{background:rgba(244,63,94,.1);color:var(--red);border:1px solid rgba(244,63,94,.2);}
+.chip-purple{background:rgba(139,92,246,.1);color:var(--purple);border:1px solid rgba(139,92,246,.2);}
+
+/* ARCH PAGE */
+.arch-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:12px;}
+.arch-card{background:var(--panel);border:1px solid var(--border);border-radius:7px;padding:14px;}
+.arch-num{font-size:22px;font-weight:900;font-family:var(--mono);opacity:.3;line-height:1;}
+.arch-name{font-size:13px;font-weight:700;margin:4px 0;}
+.arch-desc{font-size:11px;color:var(--text2);line-height:1.6;}
+.arch-examples{margin-top:8px;display:flex;flex-wrap:wrap;gap:4px;}
+.example-tag{font-size:9px;padding:2px 7px;background:var(--panel2);
+  border:1px solid var(--border);border-radius:3px;color:var(--text3);}
+
+/* SOLUTION PAGE */
+.sol-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;padding:12px;}
+.sol-card{background:var(--panel);border:1px solid var(--border);border-radius:7px;padding:14px;
+  cursor:pointer;transition:border-color .2s;}
+.sol-card:hover{border-color:var(--blue);}
+.sol-logo{font-size:24px;margin-bottom:6px;}
+.sol-name{font-size:12px;font-weight:700;margin-bottom:4px;}
+.sol-type{font-size:9px;padding:2px 7px;border-radius:3px;display:inline-block;margin-bottom:8px;}
+.sol-desc{font-size:10px;color:var(--text2);line-height:1.6;}
+.sol-features{margin-top:8px;}
+.sol-feat{font-size:10px;color:var(--text3);padding:2px 0;display:flex;align-items:center;gap:5px;}
+.sol-feat::before{content:'✓';color:var(--green);font-size:9px;}
+
+/* DEPLOYMENT PAGE */
+.dep-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;padding:12px;}
+.dep-card{background:var(--panel);border:1px solid var(--border);border-radius:7px;padding:14px;}
+.dep-icon{font-size:28px;margin-bottom:8px;}
+.dep-name{font-size:13px;font-weight:700;margin-bottom:6px;}
+.dep-desc{font-size:10px;color:var(--text2);line-height:1.6;margin-bottom:10px;}
+.dep-pros,.dep-cons{margin-bottom:8px;}
+.dep-subtitle{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px;}
+.dep-pros .dep-subtitle{color:var(--green);}
+.dep-cons .dep-subtitle{color:var(--red);}
+.dep-item{font-size:10px;color:var(--text2);padding:2px 0;display:flex;gap:5px;}
+.dep-pros .dep-item::before{content:'✓';color:var(--green);}
+.dep-cons .dep-item::before{content:'✗';color:var(--red);}
+
+/* ALERTS PAGE */
+.alerts-body{overflow-y:auto;flex:1;padding:12px;}
+.alert-card{background:var(--panel);border:1px solid var(--border);border-radius:7px;
+  padding:12px;margin-bottom:10px;cursor:pointer;transition:border-color .2s;}
+.alert-card:hover{border-color:var(--blue);}
+.alert-top{display:flex;align-items:flex-start;gap:10px;margin-bottom:6px;}
+.alert-title{font-size:12px;font-weight:600;flex:1;}
+.alert-body{font-size:11px;color:var(--text2);line-height:1.6;margin-bottom:6px;}
+.alert-meta{display:flex;gap:12px;font-size:10px;color:var(--text3);}
+.alert-meta span{display:flex;align-items:center;gap:3px;}
+
+/* OVERVIEW ROWS */
+.ov-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:0 10px 10px;}
+.ov-row3{display:grid;grid-template-columns:2fr 1fr;gap:10px;padding:0 10px 10px;}
+.rate-row{display:flex;align-items:center;gap:8px;padding:5px 12px;border-bottom:1px solid rgba(34,45,69,.4);}
+.rate-lbl{min-width:130px;font-size:10px;color:var(--text2);}
+.rate-bar{flex:1;background:var(--border);border-radius:2px;height:10px;overflow:hidden;}
+.rate-fill{height:100%;border-radius:2px;transition:width .8s;}
+.rate-num{min-width:36px;text-align:right;font-size:10px;font-family:var(--mono);color:var(--text3);}
+.evt-row{display:flex;align-items:center;padding:5px 12px;border-bottom:1px solid rgba(34,45,69,.4);}
+.evt-dot{width:8px;height:8px;border-radius:50%;margin-right:7px;flex-shrink:0;}
+.evt-name{flex:1;font-size:11px;}
+.evt-cnt{font-size:10px;font-family:var(--mono);color:var(--text3);}
+.evt-pct{font-size:9px;color:var(--text3);min-width:30px;text-align:right;}
+
+::-webkit-scrollbar{width:4px;height:4px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <a class="h-logo" href="#">
+    <div class="h-logo-box">S</div>
+    <span class="h-logo-text">Secure<span>SIEM</span></span>
+  </a>
+  <span class="h-ver">Module 04</span>
+  <div class="h-search">
+    <span class="search-icon">&#128269;</span>
+    <input id="gsearch" placeholder="index=* | search EventID:4625 src_ip:185.220.101.5 | stats count by host" oninput="globalSearch()">
+    <span class="search-tag">SPL</span>
+  </div>
+  <div class="h-sep"></div>
+  <div class="h-pill h-live"><span class="h-live-dot"></span>LIVE</div>
+  <select class="trange" id="trange" onchange="refreshAll()">
+    <option value="15m">Last 15 min</option>
+    <option value="1h" selected>Last 1 hour</option>
+    <option value="24h">Last 24 hours</option>
+    <option value="7d">Last 7 days</option>
+  </select>
+  <button class="h-btn">&#9881; Settings</button>
+  <button class="h-btn primary" onclick="injectEvent()">+ Inject Event</button>
+  <span id="hclock"></span>
+</div>
+
+<div class="app">
+<!-- SIDEBAR -->
+<div class="sidebar">
+  <div class="sb-section">
+    <div class="sb-label">Overview</div>
+    <div class="sb-item active" onclick="switchPage('overview',this)"><span class="ic">&#128202;</span>Dashboard</div>
+    <div class="sb-item" onclick="switchPage('alerts',this)"><span class="ic">&#128680;</span>Active Alerts<span class="sb-badge red" id="sb-alerts">0</span></div>
+  </div>
+  <div class="sb-divider"></div>
+  <div class="sb-section">
+    <div class="sb-label">Log Analysis</div>
+    <div class="sb-item" onclick="switchPage('logview',this)"><span class="ic">&#128196;</span>Log Viewer<span class="sb-badge dim" id="sb-logs">0</span></div>
+    <div class="sb-item" onclick="switchPage('correlation',this)"><span class="ic">&#128279;</span>Correlation Rules</div>
+  </div>
+  <div class="sb-divider"></div>
+  <div class="sb-section">
+    <div class="sb-label">SIEM Platform</div>
+    <div class="sb-item" onclick="switchPage('capabilities',this)"><span class="ic">&#9919;</span>Capabilities</div>
+    <div class="sb-item" onclick="switchPage('architecture',this)"><span class="ic">&#127963;</span>Architecture</div>
+    <div class="sb-item" onclick="switchPage('solutions',this)"><span class="ic">&#128218;</span>SIEM Solutions</div>
+    <div class="sb-item" onclick="switchPage('deployment',this)"><span class="ic">&#128640;</span>Deployment Types</div>
+  </div>
+  <div class="sb-divider"></div>
+  <div class="sb-section">
+    <div class="sb-label">Log Sources</div>
+    <div class="sb-source-item"><span class="sb-dot" style="background:var(--green)"></span>Windows Security<span class="sb-source-count" id="ssb-win">0</span></div>
+    <div class="sb-source-item"><span class="sb-dot" style="background:var(--orange)"></span>Linux Auth<span class="sb-source-count" id="ssb-linux">0</span></div>
+    <div class="sb-source-item"><span class="sb-dot" style="background:var(--cyan)"></span>Firewall<span class="sb-source-count" id="ssb-fw">0</span></div>
+    <div class="sb-source-item"><span class="sb-dot" style="background:var(--purple)"></span>IDS/IPS<span class="sb-source-count" id="ssb-ids">0</span></div>
+    <div class="sb-source-item"><span class="sb-dot" style="background:var(--red)"></span>Web Server<span class="sb-source-count" id="ssb-web">0</span></div>
+  </div>
+</div>
+
+<!-- CONTENT -->
+<div class="content">
+<div class="page-tabs">
+  <div class="ptab active" id="ptab-main">Dashboard</div>
+  <div class="ptabs-right">
+    <button class="h-btn" onclick="exportData()">&#128190; Export</button>
+    <button class="h-btn" onclick="refreshAll()">&#8635; Refresh</button>
+    <span style="font-size:10px;color:var(--text3)" id="last-refresh">Refreshed: just now</span>
+  </div>
+</div>
+
+<div class="pages">
+
+<!-- ═══ DASHBOARD ═══ -->
+<div class="page active" id="page-overview">
+  <div class="stat-row" id="stat-row"></div>
+  <div class="ov-row">
+    <div class="card">
+      <div class="card-h"><span class="card-title">Log Ingestion Rate — Events/hour by Source</span><span class="bage bage-blue" id="ev-total-b">0 total</span></div>
+      <div id="rate-bars"></div>
+    </div>
+    <div class="card">
+      <div class="card-h"><span class="card-title">Event Distribution by Type</span></div>
+      <div id="evt-dist"></div>
+    </div>
+  </div>
+  <div class="ov-row3">
+    <div class="card">
+      <div class="card-h"><span class="card-title">Recent Critical & High Events</span><span class="bage bage-red" id="recent-b">0 events</span></div>
+      <div id="recent-events"></div>
+    </div>
+    <div class="card">
+      <div class="card-h"><span class="card-title">SIEM Use Case Coverage</span></div>
+      <div id="usecase-coverage" style="padding:10px"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ ALERTS ═══ -->
+<div class="page" id="page-alerts">
+  <div class="alerts-body" id="alerts-body"></div>
+</div>
+
+<!-- ═══ LOG VIEWER ═══ -->
+<div class="page" id="page-logview">
+  <div class="lv-layout">
+    <div class="lv-left">
+      <div class="lv-sh">Log Sources</div>
+      <div id="lv-sources"></div>
+    </div>
+    <div class="lv-main">
+      <div class="log-toolbar">
+        <input class="lf-input" id="log-filter" placeholder="Search: EventID:4625  host:WS-FINANCE  severity:CRITICAL  src_ip:185.220.101.5" oninput="filterLogs()">
+        <span class="sev-btn sev-ALL on" onclick="setSev('ALL',this)">ALL</span>
+        <span class="sev-btn sev-CRIT" onclick="setSev('CRITICAL',this)">CRIT</span>
+        <span class="sev-btn sev-HIGH" onclick="setSev('HIGH',this)">HIGH</span>
+        <span class="sev-btn sev-MED" onclick="setSev('MEDIUM',this)">MED</span>
+        <span class="sev-btn sev-INFO" onclick="setSev('INFO',this)">INFO</span>
+        <span style="font-size:10px;color:var(--text3);margin-left:4px" id="log-count-lbl">0 events</span>
+      </div>
+      <div class="ltable-wrap">
+        <table class="ltable">
+          <thead><tr>
+            <th style="width:130px">Timestamp</th>
+            <th style="width:68px">Severity</th>
+            <th style="width:72px">Event ID</th>
+            <th style="width:105px">Host</th>
+            <th style="width:95px">Source</th>
+            <th>Message</th>
+          </tr></thead>
+          <tbody id="log-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="detail-pane" id="detail-pane">
+      <div class="dp-header"><span class="dp-title">Event Details</span><span class="dp-x" onclick="clearDetail()">&#10005;</span></div>
+      <div class="dp-body" id="dp-body"><div style="color:var(--text3);text-align:center;padding:30px;font-size:11px">Click any log entry to inspect</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ CORRELATION RULES (USE CASES) ═══ -->
+<div class="page" id="page-correlation">
+  <div class="uc-grid">
+    <div class="uc-left" id="uc-list"></div>
+    <div class="uc-right" id="uc-detail"><div style="color:var(--text3);text-align:center;padding:40px;font-size:11px">Select a use case to view its correlation logic, event sources, and response playbook</div></div>
+  </div>
+</div>
+
+<!-- ═══ CAPABILITIES ═══ -->
+<div class="page" id="page-capabilities">
+  <div style="padding:12px">
+    <div style="font-size:12px;color:var(--text2);margin-bottom:12px;line-height:1.7">
+      SIEM (Security Information and Event Management) combines <strong style="color:var(--blue2)">SIM</strong> (log collection, storage, analysis, reporting) and <strong style="color:var(--purple)">SEM</strong> (real-time monitoring, correlation, incident response) into a unified platform at the heart of every SOC.
+    </div>
+  </div>
+  <div class="cap-grid" id="cap-grid"></div>
+</div>
+
+<!-- ═══ ARCHITECTURE ═══ -->
+<div class="page" id="page-architecture">
+  <div style="padding:12px">
+    <div style="font-size:12px;color:var(--text2);margin-bottom:2px;line-height:1.7">
+      A typical SIEM environment has four layers. Data flows from <strong style="color:var(--cyan)">devices</strong> through <strong style="color:var(--blue2)">collectors/agents</strong> to a <strong style="color:var(--purple)">central engine</strong> where correlation occurs, with results stored in a <strong style="color:var(--green)">database</strong>.
+    </div>
+  </div>
+  <div class="arch-grid" id="arch-grid"></div>
+  <div style="padding:0 12px 12px">
+    <div class="card">
+      <div class="card-h"><span class="card-title">SIEM Data Flow</span></div>
+      <div style="padding:12px;font-family:var(--mono);font-size:11px;color:var(--text2);line-height:1.8">
+        <span style="color:var(--cyan)">[ FW / IDS / Servers / Apps / OS ]</span>
+        &nbsp;&rarr;&nbsp;<span style="color:var(--blue2)">[ Collectors / Agents / Connectors ]</span>
+        &nbsp;&rarr;&nbsp;<span style="color:var(--purple)">[ Normalize &amp; Parse ]</span>
+        &nbsp;&rarr;&nbsp;<span style="color:var(--yellow)">[ Correlate &amp; Analyze ]</span>
+        &nbsp;&rarr;&nbsp;<span style="color:var(--red)">[ Alert / Dashboard ]</span>
+        &nbsp;&rarr;&nbsp;<span style="color:var(--green)">[ Database / Retention ]</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SOLUTIONS ═══ -->
+<div class="page" id="page-solutions">
+  <div class="sol-grid" id="sol-grid"></div>
+</div>
+
+<!-- ═══ DEPLOYMENT ═══ -->
+<div class="page" id="page-deployment">
+  <div class="dep-grid" id="dep-grid"></div>
+  <div style="padding:0 12px 12px">
+    <div class="card">
+      <div class="card-h"><span class="card-title">Phased Deployment Recommendations</span><span class="bage bage-green">Best Practice</span></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:0">
+        <div style="padding:12px;border-right:1px solid var(--border)">
+          <div style="font-size:10px;font-weight:700;color:var(--blue2);margin-bottom:8px">&#10102; Phase 1: Log Management First</div>
+          <div style="font-size:10px;color:var(--text2);line-height:1.7">Deploy centralized log collection before enabling analytics. Build baseline. Reduces complexity and improves initial visibility.</div>
+        </div>
+        <div style="padding:12px">
+          <div style="font-size:10px;font-weight:700;color:var(--purple);margin-bottom:8px">&#10103; Phase 2: Use-Case-by-Use-Case (Output-Driven)</div>
+          <div style="font-size:10px;color:var(--text2);line-height:1.7">Enable one detection use case at a time. Define scope, event sources, correlation logic, and response playbook per use case before moving to the next.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div><!-- /pages -->
+</div><!-- /content -->
+</div><!-- /app -->
+
+<script>
+// ── SAFETY ───────────────────────────────────────────────────────────────────
+function e(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
+
+// ── CLOCK ─────────────────────────────────────────────────────────────────────
+setInterval(()=>document.getElementById('hclock').textContent=new Date().toLocaleTimeString('en-GB')+' UTC',1000);
+
+// ── NAV ───────────────────────────────────────────────────────────────────────
+function switchPage(id,el){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.sb-item').forEach(i=>i.classList.remove('active'));
+  document.getElementById('page-'+id).classList.add('active');
+  if(el) el.classList.add('active');
+  const labels={overview:'Dashboard',alerts:'Active Alerts',logview:'Log Viewer',
+    correlation:'Correlation Rules',capabilities:'SIEM Capabilities',
+    architecture:'SIEM Architecture',solutions:'SIEM Solutions',deployment:'Deployment Types'};
+  document.getElementById('ptab-main').textContent=labels[id]||id;
+}
+
+// ── DATA ──────────────────────────────────────────────────────────────────────
+const HOSTS=['WS-FINANCE-01','WS-HR-03','SRV-DC-01','SRV-FILE-01','WS-DEV-05','WS-EXEC-01','SRV-WEB-01'];
+const IPS_EXT=['185.220.101.5','45.142.212.100','185.234.218.48','203.0.113.55'];
+const IPS_INT=['192.168.1.15','192.168.1.22','192.168.1.5','192.168.1.10','192.168.1.31'];
+const USERS=['jsmith','mwilson','dchen','SYSTEM','LOCAL SERVICE','rzhan'];
+function rnd(a,b){return Math.floor(Math.random()*(b-a+1))+a;}
+function pick(arr){return arr[rnd(0,arr.length-1)];}
+function tsnow(){return new Date().toISOString().replace('T',' ').slice(0,19);}
+
+const TEMPLATES=[
+  {src:'Windows Security',eid:'4625',sev:'HIGH',   msg:()=>'Failed logon: '+pick(USERS)+' from '+pick(IPS_INT)+' Logon Type 3 Status:0xC000006A'},
+  {src:'Windows Security',eid:'4624',sev:'INFO',   msg:()=>'Successful logon: '+pick(USERS)+' from '+pick(IPS_INT)+' Type:3'},
+  {src:'Windows Security',eid:'4688',sev:'MEDIUM', msg:()=>'Process created: powershell.exe Parent:'+pick(['winword.exe','excel.exe','explorer.exe'])+' User:'+pick(USERS)},
+  {src:'Windows Security',eid:'4698',sev:'HIGH',   msg:()=>'Scheduled task created: \\Microsoft\\Windows\\'+pick(['SvcHlp','UpdateCheck','Maintenance'])+' by '+pick(USERS)},
+  {src:'Windows Security',eid:'4732',sev:'CRITICAL',msg:()=>'Member added to Administrators group: '+pick(USERS)+' by '+pick(USERS)},
+  {src:'Windows Security',eid:'1102',sev:'CRITICAL',msg:()=>'Audit log cleared by: '+pick(USERS)+' LogonID:0x'+rnd(10000,99999).toString(16).toUpperCase()},
+  {src:'Windows System',  eid:'7045',sev:'HIGH',   msg:()=>'New service installed: '+pick(['WinSvc32','SvcHlp64','NetHelper'])+' Path:C:\\Windows\\Temp\\'+pick(['svc.exe','helper.exe'])},
+  {src:'Linux Auth',      eid:'sshd', sev:'HIGH',  msg:()=>'Failed password for '+pick(USERS)+' from '+pick(IPS_EXT)+' port '+rnd(40000,60000)+' ssh2'},
+  {src:'Linux Auth',      eid:'sudo', sev:'MEDIUM',msg:()=>pick(USERS)+' : TTY=pts/0 ; USER=root ; CMD='+pick(['/bin/bash','/usr/bin/cat /etc/shadow','/bin/chmod 777'])},
+  {src:'Firewall',        eid:'FW',   sev:'HIGH',  msg:()=>'DENY TCP '+pick(IPS_EXT)+':'+rnd(40000,60000)+' -> '+pick(IPS_INT)+':'+pick([3389,22,445,4444])},
+  {src:'IDS/IPS',         eid:'IDS',  sev:'CRITICAL',msg:()=>'ALERT: '+pick(['ET MALWARE Meterpreter','ET SCAN Nmap SYN','ET TROJAN Agent','GPL ATTACK_RESPONSE'])+' SRC:'+pick(IPS_EXT)+' SIG:'+rnd(1000000,9999999)},
+  {src:'Web Server',      eid:'HTTP', sev:'HIGH',  msg:()=>pick(IPS_EXT)+' "GET /'+pick(['admin/','login?id=1 OR 1=1','download?file=../../etc/passwd','wp-login.php'])+' HTTP/1.1" '+pick([403,200,500])},
+  {src:'Windows Security',eid:'4720',sev:'HIGH',   msg:()=>'User account created: '+pick(['svc_backup','admin_temp'])+' by '+pick(USERS)},
+  {src:'Windows Security',eid:'4776',sev:'MEDIUM', msg:()=>'Credential validation failed for: '+pick(USERS)+' Error:0xC000006A'},
+];
+
+let LOGS=[];
+let COUNTS={total:0,critical:0,high:0,medium:0,info:0,win:0,linux:0,fw:0,ids:0,web:0};
+let selLogId=null;
+let activeSev='ALL';
+let activeLogSrc='ALL';
+let logFilter='';
+
+function makeLog(){
+  const t=pick(TEMPLATES);
+  const log={id:Date.now()+Math.random(),ts:tsnow(),src:t.src,eid:t.eid,sev:t.sev,
+    host:pick(HOSTS),msg:t.msg(),user:pick(USERS),srcip:rnd(0,2)>1?pick(IPS_INT):pick(IPS_EXT)};
+  LOGS.unshift(log);
+  if(LOGS.length>300) LOGS.pop();
+  COUNTS.total++;
+  if(log.sev==='CRITICAL') COUNTS.critical++;
+  else if(log.sev==='HIGH') COUNTS.high++;
+  else if(log.sev==='MEDIUM') COUNTS.medium++;
+  else COUNTS.info++;
+  if(log.src.includes('Windows')) COUNTS.win++;
+  else if(log.src.includes('Linux')) COUNTS.linux++;
+  else if(log.src==='Firewall') COUNTS.fw++;
+  else if(log.src==='IDS/IPS') COUNTS.ids++;
+  else if(log.src==='Web Server') COUNTS.web++;
+  return log;
+}
+
+function seed(){for(let i=0;i<80;i++) makeLog();}
+
+// ── DASHBOARD ─────────────────────────────────────────────────────────────────
+function renderDashboard(){
+  // Stat cards
+  const stats=[
+    {val:COUNTS.total,   lbl:'Total Events', color:'var(--blue2)',  trend:'+'+rnd(3,12)+'% vs prev'},
+    {val:COUNTS.critical,lbl:'Critical',      color:'var(--red)',    trend:rnd(1,5)+' new this hour',tclass:'trend-up'},
+    {val:COUNTS.high,    lbl:'High Severity', color:'var(--orange)', trend:'Under investigation'},
+    {val:COUNTS.win,     lbl:'Windows Events',color:'#0078d4',      trend:'5 agents active'},
+    {val:COUNTS.linux,   lbl:'Linux/Syslog',  color:'var(--orange)',trend:'3 agents active'},
+    {val:LOGS.filter(l=>l.sev==='CRITICAL').slice(0,10).length,lbl:'Active Incidents',color:'var(--purple)',trend:'Requires triage',tclass:'trend-up'},
+  ];
+  document.getElementById('stat-row').innerHTML=stats.map(s=>`
+    <div class="stat-card">
+      <div class="stat-val" style="color:${s.color}">${s.val}</div>
+      <div class="stat-lbl">${e(s.lbl)}</div>
+      <div class="stat-trend ${s.tclass||'trend-ok'}">${e(s.trend||'Normal')}</div>
+    </div>`).join('');
+
+  // Rate bars
+  const rates=[
+    {lbl:'Windows Security',cnt:COUNTS.win,   color:'#3b82f6'},
+    {lbl:'Linux Auth/Syslog',cnt:COUNTS.linux,color:'#f97316'},
+    {lbl:'Firewall',         cnt:COUNTS.fw,   color:'#06b6d4'},
+    {lbl:'IDS/IPS Alerts',  cnt:COUNTS.ids,  color:'#8b5cf6'},
+    {lbl:'Web Server',       cnt:COUNTS.web,  color:'#f43f5e'},
+  ];
+  const mx=Math.max(...rates.map(r=>r.cnt))||1;
+  document.getElementById('rate-bars').innerHTML=rates.map(r=>`
+    <div class="rate-row">
+      <span class="rate-lbl">${e(r.lbl)}</span>
+      <div class="rate-bar"><div class="rate-fill" style="width:${r.cnt/mx*100}%;background:${r.color}"></div></div>
+      <span class="rate-num">${r.cnt}</span>
+    </div>`).join('');
+  document.getElementById('ev-total-b').textContent=COUNTS.total+' total';
+
+  // Event distribution
+  const evTypes=[
+    {n:'Authentication Events', cnt:LOGS.filter(l=>['4624','4625','4776','sshd'].includes(l.eid)).length, c:'#3b82f6'},
+    {n:'Process / Execution',   cnt:LOGS.filter(l=>l.eid==='4688').length,   c:'#8b5cf6'},
+    {n:'Group / Account Mgmt',  cnt:LOGS.filter(l=>['4720','4732'].includes(l.eid)).length, c:'#f43f5e'},
+    {n:'Scheduled Tasks',       cnt:LOGS.filter(l=>['4698','cron'].includes(l.eid)).length, c:'#f97316'},
+    {n:'Firewall Events',       cnt:LOGS.filter(l=>l.eid==='FW').length,     c:'#06b6d4'},
+    {n:'IDS Signature Matches', cnt:LOGS.filter(l=>l.eid==='IDS').length,    c:'#fbbf24'},
+    {n:'Audit Log Events',      cnt:LOGS.filter(l=>l.eid==='1102').length,   c:'#ef4444'},
+    {n:'Service / Persistence', cnt:LOGS.filter(l=>l.eid==='7045').length,   c:'#ec4899'},
+  ];
+  const tot=evTypes.reduce((a,b)=>a+b.cnt,0)||1;
+  document.getElementById('evt-dist').innerHTML=evTypes.map(t=>`
+    <div class="evt-row">
+      <span class="evt-dot" style="background:${t.c}"></span>
+      <span class="evt-name">${e(t.n)}</span>
+      <span class="evt-cnt">${t.cnt}</span>
+      <span class="evt-pct">${Math.round(t.cnt/tot*100)}%</span>
+    </div>`).join('');
+
+  // Recent critical/high
+  const recent=LOGS.filter(l=>l.sev==='CRITICAL'||l.sev==='HIGH').slice(0,8);
+  document.getElementById('recent-b').textContent=recent.length+' events';
+  const re=document.getElementById('recent-events');
+  re.innerHTML='';
+  recent.forEach(log=>{
+    const row=document.createElement('div');
+    row.style.cssText='display:flex;align-items:center;gap:8px;padding:7px 12px;border-bottom:1px solid rgba(34,45,69,.4);cursor:pointer;transition:background .1s;font-size:11px;';
+    row.addEventListener('mouseover',()=>row.style.background='rgba(255,255,255,.02)');
+    row.addEventListener('mouseout',()=>row.style.background='');
+    row.addEventListener('click',()=>{switchPage('logview',null);setTimeout(()=>showDetail(log.id),80);});
+    row.innerHTML=`<span class="sevbadge ${e(log.sev)}">${e(log.sev)}</span>
+      <span style="color:var(--text3);font-family:var(--mono);min-width:65px">${e(log.ts.slice(11))}</span>
+      <span style="color:var(--cyan);min-width:85px">${e(log.host)}</span>
+      <span style="color:var(--purple);min-width:50px">EID:${e(log.eid)}</span>
+      <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text2)">${e(log.msg)}</span>`;
+    re.appendChild(row);
+  });
+
+  // Use case coverage widget
+  const ucs=[
+    {name:'Brute Force',status:'active',color:'var(--green)'},
+    {name:'C2 Beacon',status:'active',color:'var(--green)'},
+    {name:'Lateral Movement',status:'active',color:'var(--green)'},
+    {name:'Privilege Escalation',status:'active',color:'var(--green)'},
+    {name:'Data Exfiltration',status:'partial',color:'var(--yellow)'},
+    {name:'Insider Threat',status:'partial',color:'var(--yellow)'},
+    {name:'Ransomware Precursor',status:'planned',color:'var(--text3)'},
+    {name:'Cloud Asset Misuse',status:'planned',color:'var(--text3)'},
+  ];
+  document.getElementById('usecase-coverage').innerHTML=ucs.map(u=>`
+    <div style="display:flex;align-items:center;gap:7px;padding:4px 0;border-bottom:1px solid rgba(34,45,69,.4);font-size:10px">
+      <span style="width:7px;height:7px;border-radius:50%;background:${u.color};flex-shrink:0"></span>
+      <span style="flex:1">${e(u.name)}</span>
+      <span style="font-size:9px;color:${u.color}">${e(u.status.toUpperCase())}</span>
+    </div>`).join('');
+
+  // Sidebar badges
+  document.getElementById('sb-alerts').textContent=COUNTS.critical;
+  document.getElementById('sb-logs').textContent=COUNTS.total;
+  document.getElementById('ssb-win').textContent=COUNTS.win;
+  document.getElementById('ssb-linux').textContent=COUNTS.linux;
+  document.getElementById('ssb-fw').textContent=COUNTS.fw;
+  document.getElementById('ssb-ids').textContent=COUNTS.ids;
+  document.getElementById('ssb-web').textContent=COUNTS.web;
+  document.getElementById('last-refresh').textContent='Refreshed: '+new Date().toLocaleTimeString('en-GB');
+}
+
+// ── LOG VIEWER ─────────────────────────────────────────────────────────────────
+const LOG_SOURCES=['All Sources','Windows Security','Windows System','Linux Auth','Linux Syslog','Firewall','IDS/IPS','Web Server'];
+function buildLogSources(){
+  const el=document.getElementById('lv-sources');
+  el.innerHTML='';
+  LOG_SOURCES.forEach((s,i)=>{
+    const div=document.createElement('div');
+    div.className='lv-src'+(i===0?' on':'');
+    const cnt=i===0?COUNTS.total:LOGS.filter(l=>l.src===s).length;
+    div.innerHTML=`<span class="sb-dot" style="background:${['var(--text3)','var(--green)','#0078d4','var(--orange)','var(--yellow)','var(--cyan)','var(--purple)','var(--red)'][i]}"></span>
+      <span style="font-size:10px;font-weight:500">${e(s)}</span>
+      <span class="sb-source-count">${cnt}</span>`;
+    div.addEventListener('click',()=>{
+      document.querySelectorAll('.lv-src').forEach(x=>x.classList.remove('on'));
+      div.classList.add('on');
+      activeLogSrc=s==='All Sources'?'ALL':s;
+      renderLogTable();
+    });
+    el.appendChild(div);
+  });
+}
+
+function filterLogs(){logFilter=document.getElementById('log-filter').value.toLowerCase();renderLogTable();}
+function setSev(sev,btn){
+  activeSev=sev;
+  document.querySelectorAll('.sev-btn').forEach(b=>b.classList.remove('on'));
+  btn.classList.add('on');
+  renderLogTable();
+}
+
+function renderLogTable(){
+  let logs=LOGS;
+  if(activeLogSrc!=='ALL') logs=logs.filter(l=>l.src===activeLogSrc);
+  if(activeSev!=='ALL') logs=logs.filter(l=>l.sev===activeSev);
+  if(logFilter){
+    const f=logFilter;
+    logs=logs.filter(l=>l.msg.toLowerCase().includes(f)||l.host.toLowerCase().includes(f)||
+      l.eid.toLowerCase().includes(f)||l.src.toLowerCase().includes(f)||l.sev.toLowerCase().includes(f)||
+      l.srcip.toLowerCase().includes(f)||l.user.toLowerCase().includes(f));
+  }
+  document.getElementById('log-count-lbl').textContent=logs.length+' events';
+  const tbody=document.getElementById('log-tbody');
+  tbody.innerHTML='';
+  logs.slice(0,200).forEach(log=>{
+    const tr=document.createElement('tr');
+    if(log.id===selLogId) tr.className='sel';
+    tr.addEventListener('click',()=>showDetail(log.id));
+    const msgTd=document.createElement('td');
+    msgTd.style.cssText='color:var(--text2);max-width:400px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;';
+    msgTd.textContent=log.msg;
+    tr.innerHTML=`<td style="color:var(--text3);white-space:nowrap">${e(log.ts)}</td>
+      <td><span class="sevbadge ${e(log.sev)}">${e(log.sev)}</span></td>
+      <td style="color:var(--purple)">${e(log.eid)}</td>
+      <td style="color:var(--cyan)">${e(log.host)}</td>
+      <td style="font-size:10px;color:var(--text3)">${e(log.src)}</td>`;
+    tr.appendChild(msgTd);
+    tbody.appendChild(tr);
+  });
+}
+
+const GUIDANCE={
+  '4625':'Brute force indicator. Alert: >5 failures from same source in 60s. Check Status code: 0xC000006A=wrong password, 0xC0000064=unknown user.',
+  '4624':'Successful logon. Correlate time/location. Alert on after-hours logins, new source IPs, admin accounts from non-admin hosts.',
+  '4688':'Process created. Enable command line logging. Alert: Office/browser spawning cmd/powershell. Check parent-child chain.',
+  '4698':'Scheduled task created. Alert: tasks from Temp/AppData, Base64-encoded commands, tasks created by non-admin.',
+  '4732':'Admin group changed — IMMEDIATE P1. Any change to Administrators or Domain Admins requires immediate investigation.',
+  '1102':'Security log cleared — IMMEDIATE P1. Attacker covering tracks. Centralized SIEM log unaffected. Identify who cleared.',
+  '7045':'Service installed. Alert: binary in Temp or AppData. Typosquatted name. Service created by non-admin account.',
+  '4720':'User account created. Verify against provisioning request. Alert: accounts created outside change window.',
+  '4776':'Credential validation failed. Track for spray pattern: many accounts, low frequency per account.',
+  'sshd':'SSH failure from external IP. Alert: >10 failures from same IP. Successful SSH after failures = confirmed brute force.',
+  'sudo':'Root privilege use. Verify against change record. Alert: shell commands or network tools via sudo.',
+  'FW':'Firewall event. High-risk ports (22,3389,4444) from external require investigation. Check deny rate from single IP.',
+  'IDS':'IDS signature match. Correlate with network flow and endpoint. Tune for false positive reduction.',
+  'HTTP':'Web attack pattern. Review WAF rules. Block source IP after confirmed attack. Check for SQLi or traversal in URI.',
+};
+function showDetail(id){
+  selLogId=id;
+  const log=LOGS.find(l=>l.id===id);
+  if(!log) return;
+  renderLogTable();
+  const sevColor={CRITICAL:'var(--red)',HIGH:'var(--orange)',MEDIUM:'var(--yellow)',INFO:'var(--green)'}[log.sev]||'var(--text2)';
+  const guidance=GUIDANCE[log.eid]||'Review in context of surrounding events. Correlate across sources before escalation.';
+  const rows=[['Timestamp',log.ts],['Severity',log.sev],['Event ID',log.eid],['Host',log.host],
+    ['Source',log.src],['User',log.user],['Source IP',log.srcip]];
+  document.getElementById('dp-body').innerHTML=
+    rows.map(([k,v])=>`<div class="dp-row"><span class="dp-key">${e(k)}</span><span class="dp-val" style="${k==='Severity'?'color:'+sevColor:''}">${e(v)}</span></div>`).join('')
+    +`<div style="font-size:9px;color:var(--text3);margin:10px 0 4px;text-transform:uppercase;letter-spacing:.5px">Raw Event</div>`
+    +`<div class="raw-box">${e(log.ts+'\n'+log.host+' '+log.src+'\nEventID: '+log.eid+' Sev: '+log.sev+'\nUser: '+log.user+' SrcIP: '+log.srcip+'\n\n'+log.msg)}</div>`
+    +`<div style="font-size:9px;color:var(--text3);margin:10px 0 4px;text-transform:uppercase;letter-spacing:.5px">SOC Guidance</div>`
+    +`<div class="guidance-box">${e(guidance)}</div>`;
+}
+function clearDetail(){selLogId=null;document.getElementById('dp-body').innerHTML='<div style="color:var(--text3);text-align:center;padding:30px;font-size:11px">Click any log entry to inspect</div>';}
+
+// ── ALERTS PAGE ───────────────────────────────────────────────────────────────
+function renderAlerts(){
+  const crits=LOGS.filter(l=>l.sev==='CRITICAL'||l.sev==='HIGH').slice(0,20);
+  const el=document.getElementById('alerts-body');
+  el.innerHTML='';
+  crits.forEach(log=>{
+    const div=document.createElement('div');
+    div.className='alert-card';
+    div.addEventListener('mouseover',()=>div.style.borderColor='var(--blue)');
+    div.addEventListener('mouseout',()=>div.style.borderColor='var(--border)');
+    div.addEventListener('click',()=>{switchPage('logview',null);setTimeout(()=>showDetail(log.id),80);});
+    const sevColor={CRITICAL:'var(--red)',HIGH:'var(--orange)'}[log.sev]||'var(--yellow)';
+    const title={CRITICAL:'&#9888; CRITICAL SECURITY EVENT',HIGH:'&#128680; HIGH SEVERITY EVENT'}[log.sev]||'Event';
+    div.innerHTML=`<div class="alert-top">
+      <span class="sevbadge ${e(log.sev)}" style="font-size:10px">${e(log.sev)}</span>
+      <span class="alert-title" style="color:${sevColor}">${title} — EID ${e(log.eid)}</span>
+      <button class="h-btn" style="flex-shrink:0;font-size:10px" onclick="event.stopPropagation();this.textContent='Acknowledged';this.style.color='var(--green)'">Acknowledge</button>
+    </div>
+    <div class="alert-body">${e(log.msg)}</div>
+    <div class="alert-meta">
+      <span>&#128196; ${e(log.src)}</span>
+      <span>&#128187; ${e(log.host)}</span>
+      <span>&#128336; ${e(log.ts)}</span>
+      <span style="color:var(--purple)">EventID: ${e(log.eid)}</span>
+    </div>`;
+    el.appendChild(div);
+  });
+}
+
+// ── CORRELATION USE CASES ─────────────────────────────────────────────────────
+const USE_CASES=[
+  {sev:'CRITICAL',name:'Brute Force Authentication Attack',category:'Authentication',mitre:'T1110',
+   desc:'Detects systematic password guessing attacks against user accounts. Monitors failed login thresholds, spray patterns (one password against many accounts), and successful logins following failures.',
+   logic:`RULE: BruteForce_Detection
+WHEN:
+  EventID = 4625 (Authentication Failure)
+  Source_IP = same IP across events
+  Timeframe = 60 seconds
+  Count >= 5
+THEN:
+  Severity = HIGH
+  Alert = "Brute Force Detected: {src_ip} ({count} failures)"
+
+VARIANT: Password Spray
+WHEN:
+  EventID = 4625
+  Account_Count >= 3 (different accounts)
+  Same_Source_IP = true
+  Failures_Per_Account <= 2
+THEN:
+  Severity = CRITICAL (avoids lockout — targeted)`,
+   sources:['Windows Security (4625)','Linux Auth (sshd)','VPN Logs'],
+   response:'1. Block source IP at perimeter firewall\n2. Alert account owners\n3. Check for successful login following failures (EID 4624)\n4. Investigate source IP reputation via threat intel\n5. Escalate if spray pattern (distributed brute force)'},
+  {sev:'CRITICAL',name:'C2 Beacon Detection',category:'Command & Control',mitre:'T1071.001',
+   desc:'Detects periodic outbound connections indicating malware Command and Control beaconing. Uses jitter analysis and connection interval statistics to identify systematic check-ins.',
+   logic:`RULE: C2_Beacon_Pattern
+WHEN:
+  Outbound_Connection = new/unknown destination
+  Connection_Interval BETWEEN 25s AND 35s
+  Jitter_Analysis = regular (low variance)
+  Domain_Age < 30 days
+  MATCHES threat_intel_feed
+THEN:
+  Severity = CRITICAL
+  Alert = "C2 Beacon: {src_host} -> {dst_ip}:{dst_port}"
+
+OR:
+WHEN:
+  DNS_Query contains DGA_pattern (high entropy)
+  Query_Frequency = every 60s
+THEN:
+  Severity = CRITICAL
+  Alert = "DGA C2 Channel: {host} querying {domain}"`,
+   sources:['Firewall Logs','DNS Logs','IDS/IPS','NetFlow'],
+   response:'1. IMMEDIATE: Isolate host from network\n2. Block C2 IP/domain at firewall and DNS\n3. Capture memory dump for forensic analysis\n4. Pull all logs from host for 24h prior\n5. Initiate IR plan — check for lateral movement'},
+  {sev:'HIGH',name:'Privilege Escalation via Admin Group',category:'Privilege Escalation',mitre:'T1078',
+   desc:'Detects unauthorized addition of accounts to privileged groups. Any change to Administrators, Domain Admins, or Enterprise Admins groups triggers an immediate high-priority alert.',
+   logic:`RULE: Privileged_Group_Change
+WHEN:
+  EventID = 4732 (Member Added to Security Group)
+  Target_Group IN [
+    "Administrators",
+    "Domain Admins",
+    "Enterprise Admins",
+    "Schema Admins"
+  ]
+THEN:
+  Severity = CRITICAL
+  Alert = "PRIVESC: {account} added to {group} by {actor}"
+
+CORRELATE WITH:
+  Prior EventID 4688 (process creation) on same host
+  Prior EventID 4625 (login failures) within 1 hour`,
+   sources:['Windows Security (4732)','Active Directory Audit Logs'],
+   response:'1. Immediately verify with IT/HR — is this authorized?\n2. If unauthorized: disable added account immediately\n3. Remove account from privileged group\n4. Investigate how the modification was made\n5. Review all actions taken by the account since addition\n6. Reset credentials for all affected privileged accounts'},
+  {sev:'CRITICAL',name:'Security Log Cleared',category:'Defense Evasion',mitre:'T1070.001',
+   desc:'Detects when the Windows Security audit log is cleared. This is almost exclusively an attacker action. Centralized SIEM log collection is unaffected as events were already forwarded.',
+   logic:`RULE: Audit_Log_Cleared
+WHEN:
+  EventID = 1102 (Security Log Cleared)
+  ANY host
+THEN:
+  Severity = CRITICAL
+  Priority = P1
+  Alert = "IMMEDIATE: Security log cleared on {host} by {user}"
+  Auto_Escalate = true
+  Page_On_Call = true
+
+NOTE: This is a standalone rule — no threshold.
+Single occurrence = CRITICAL.
+Centralized SIEM logs are unaffected.
+The event captures WHO cleared the log.`,
+   sources:['Windows Security (1102)','SIEM Audit Trail'],
+   response:'1. P1 — page on-call immediately\n2. The SIEM has all prior events (centralized logging)\n3. Identify who cleared the log (logged in the 1102 event)\n4. Pull all activity for that user account for past 24h\n5. Investigate for data exfiltration or lateral movement\n6. Treat host as compromised until forensically cleared'},
+  {sev:'HIGH',name:'Lateral Movement — Credential Reuse',category:'Lateral Movement',mitre:'T1550.002',
+   desc:'Detects pass-the-hash and credential reuse patterns where a compromised account authenticates to multiple systems using the same credentials within a short time window.',
+   logic:`RULE: Lateral_Movement_Detection
+WHEN:
+  EventID = 4624 OR 4648 (Logon/Explicit Credentials)
+  Logon_Type = 3 (Network) OR 9 (NewCredentials)
+  Target_Host_Count >= 3
+  Timeframe = 30 minutes
+  Initiating_Host = single workstation
+THEN:
+  Severity = HIGH
+  Alert = "Lateral Movement: {user} accessing {n} hosts from {src}"
+
+CORRELATE WITH:
+  LSASS access (non-system process) within 30 min before`,
+   sources:['Windows Security (4624,4648)','Network Logs','EDR Telemetry'],
+   response:'1. Map all systems accessed during the movement\n2. Determine if credential dump occurred prior (LSASS access)\n3. Isolate originating workstation\n4. Reset all credentials used across the lateral path\n5. Forensically examine each accessed host\n6. Check domain controller for Golden Ticket activity'},
+  {sev:'HIGH',name:'Malware Persistence — Startup Mechanisms',category:'Persistence',mitre:'T1547',
+   desc:'Detects malware establishing persistence through Run registry keys, scheduled tasks, or Windows services created from unusual locations or by non-administrative processes.',
+   logic:`RULE: Persistence_Detected
+WHEN:
+  EventID = 4698 (Scheduled Task Created)
+  OR EventID = 7045 (Service Installed)
+  Task/Service Path CONTAINS [
+    "C:\\\\Windows\\\\Temp\\\\",
+    "%AppData%\\\\",
+    "%Temp%\\\\",
+    "C:\\\\Users\\\\*\\\\Downloads\\\\"
+  ]
+  OR Command CONTAINS "EncodedCommand"
+  OR Command CONTAINS "base64"
+THEN:
+  Severity = HIGH
+  Alert = "Persistence mechanism: {type} from {path}"
+
+ALSO:
+  Registry Run key created by non-installer process
+  -> MITRE T1547.001`,
+   sources:['Windows Security (4698)','Windows System (7045)','EDR Registry Events'],
+   response:'1. Identify binary or script being executed\n2. Compute hash and submit to VirusTotal\n3. Remove the scheduled task or service\n4. Quarantine the binary file\n5. Check for additional persistence mechanisms on same host\n6. Determine initial access vector'},
+];
+
+let activeUC=null;
+function buildCorrelation(){
+  const list=document.getElementById('uc-list');
+  list.innerHTML='';
+  USE_CASES.forEach((uc,i)=>{
+    const div=document.createElement('div');
+    div.className='uc-item'+(i===0?' on':'');
+    div.addEventListener('click',()=>{
+      document.querySelectorAll('.uc-item').forEach(x=>x.classList.remove('on'));
+      div.classList.add('on');
+      showUC(uc);
+    });
+    const sevColor={CRITICAL:'var(--red)',HIGH:'var(--orange)'}[uc.sev]||'var(--yellow)';
+    div.innerHTML=`<span class="uc-sev ${uc.sev}">${e(uc.sev)}</span>
+      <div class="uc-name">${e(uc.name)}</div>
+      <div class="uc-meta">
+        <span style="color:var(--purple)">${e(uc.category)}</span>
+        <span>${e(uc.mitre)}</span>
+      </div>`;
+    list.appendChild(div);
+  });
+  showUC(USE_CASES[0]);
+}
+
+function showUC(uc){
+  const sevColor={CRITICAL:'var(--red)',HIGH:'var(--orange)'}[uc.sev]||'var(--yellow)';
+  const srcsHtml=uc.sources.map(s=>`<span class="chip chip-blue">${e(s)}</span>`).join('');
+  document.getElementById('uc-detail').innerHTML=`
+    <div class="uc-detail">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+        <h2>${e(uc.name)}</h2>
+        <span style="font-size:11px;padding:3px 10px;border-radius:4px;background:${sevColor}18;color:${sevColor};border:1px solid ${sevColor}40;font-weight:700">${e(uc.sev)}</span>
+        <span class="chip chip-purple">${e(uc.mitre)}</span>
+      </div>
+      <p>${e(uc.desc)}</p>
+      <div class="uc-section-title">Required Event Sources</div>
+      <div style="margin-bottom:10px">${srcsHtml}</div>
+      <div class="uc-section-title">Correlation Logic (SIEM Rule)</div>
+      <div class="logic-box">${e(uc.logic)}</div>
+      <div class="uc-section-title">Response Playbook</div>
+      <div class="response-box"><strong>Containment &amp; Investigation Steps:</strong><br>${e(uc.response).replace(/\n/g,'<br>')}</div>
+    </div>`;
+}
+
+// ── CAPABILITIES ──────────────────────────────────────────────────────────────
+const CAPS=[
+  {icon:'&#128196;',name:'Log Collection',desc:'Agent-based & agentless ingestion from Windows, Linux, network devices, apps'},
+  {icon:'&#128279;',name:'Event Correlation',desc:'Rule-based & statistical correlation linking events into meaningful security incidents'},
+  {icon:'&#128680;',name:'Real-time Alerting',desc:'Threshold-based alerts sent via email, SMS, SIEM console, or ticketing systems'},
+  {icon:'&#9919;',name:'Security Analytics',desc:'Pattern analysis, anomaly detection, and behavioral baseline monitoring'},
+  {icon:'&#128202;',name:'Dashboards',desc:'SOC analyst dashboards for real-time visibility and operational decision-making'},
+  {icon:'&#128203;',name:'Reporting',desc:'Compliance reports for PCI-DSS, HIPAA, FISMA, SOX, GLBA, ISO 27001'},
+  {icon:'&#128269;',name:'Log Forensics',desc:'Historical log search enabling incident reconstruction and attack path tracing'},
+  {icon:'&#128101;',name:'User Activity Monitoring',desc:'Tracks suspicious user behavior, insider threats, and privilege abuse patterns'},
+  {icon:'&#128736;',name:'File Integrity Monitoring',desc:'Detects unauthorized changes to sensitive files and satisfies compliance requirements'},
+  {icon:'&#128204;',name:'Log Retention',desc:'Configurable retention policies for forensic investigation and audit requirements'},
+  {icon:'&#128250;',name:'App Log Monitoring',desc:'Windows/Linux/Unix application log ingestion and analysis across server types'},
+  {icon:'&#128274;',name:'Object Access Auditing',desc:'Who accessed, modified, or deleted sensitive files — with alert on unauthorized access'},
+  {icon:'&#127756;',name:'Threat Intelligence',desc:'Integration with threat intel feeds for IP/domain/hash reputation correlation'},
+  {icon:'&#128736;',name:'IT Compliance',desc:'Built-in compliance framework templates with customizable policy enforcement'},
+];
+function buildCapabilities(){
+  document.getElementById('cap-grid').innerHTML=CAPS.map(c=>`
+    <div class="cap-card">
+      <div class="cap-icon">${c.icon}</div>
+      <div class="cap-name">${e(c.name)}</div>
+      <div class="cap-desc">${e(c.desc)}</div>
+    </div>`).join('');
+}
+
+// ── ARCHITECTURE ──────────────────────────────────────────────────────────────
+const ARCH_COMPONENTS=[
+  {num:'01',name:'Data Sources',color:'var(--cyan)',
+   desc:'Every device and application in the organization generates logs. These become the raw input to the SIEM pipeline.',
+   examples:['Firewalls / IDS / IPS','Routers & Switches','Servers (Web, Mail, App)','Windows / Linux / Mac OS','Applications & Databases','Cloud Services (AWS, Azure)']},
+  {num:'02',name:'Collectors / Agents / Connectors',color:'var(--blue2)',
+   desc:'Deployed on source systems or at network collection points. Receive, normalize, and forward log data to the central engine. Support both push (Syslog/SNMP) and pull-based collection.',
+   examples:['Log Collector Agents','Flow Collectors (NetFlow)','SNMP Polling Agents','API-based Connectors','Syslog Forwarding','Agentless Collection']},
+  {num:'03',name:'Central Engine',color:'var(--purple)',
+   desc:'The analytical brain of the SIEM. Performs correlation, pattern matching, anomaly detection, alerting, and reporting. Applies rule-based and statistical correlation across normalized data.',
+   examples:['Event Correlation Engine','Alerting & Notification','Dashboard Rendering','Report Generation','Threat Intelligence Integration','Incident Management']},
+  {num:'04',name:'Database / Retention',color:'var(--green)',
+   desc:'Long-term storage for all ingested log data. Cloud-based storage is common due to the terabyte-scale volumes. Retention policy determines how long data is kept for forensics and compliance.',
+   examples:['Hot Storage (recent/active)','Cold Storage (archived)','Cloud Object Storage','Retention Policy Engine','Log Compression','Forensic Index']},
+];
+function buildArchitecture(){
+  document.getElementById('arch-grid').innerHTML=ARCH_COMPONENTS.map(c=>`
+    <div class="arch-card">
+      <div class="arch-num" style="color:${c.color}">${e(c.num)}</div>
+      <div class="arch-name" style="color:${c.color}">${e(c.name)}</div>
+      <div class="arch-desc">${e(c.desc)}</div>
+      <div class="arch-examples">${c.examples.map(x=>`<span class="example-tag">${e(x)}</span>`).join('')}</div>
+    </div>`).join('');
+}
+
+// ── SOLUTIONS ─────────────────────────────────────────────────────────────────
+const SOLUTIONS=[
+  {icon:'&#128200;',name:'Splunk Enterprise Security',vendor:'Splunk',type:'In-House / Cloud',color:'rgba(244,63,94,.15)',
+   desc:'Analytics-driven SIEM with machine learning, powerful SPL query language, and extensive integrations. Industry standard for large SOC environments.',
+   feats:['Real-time correlation engine (100k EPS)','Machine learning anomaly detection','Extensive app marketplace','SPL (Splunk Processing Language)','SOAR integration']},
+  {icon:'&#128187;',name:'IBM Security QRadar',vendor:'IBM',type:'In-House / Cloud',color:'rgba(59,130,246,.12)',
+   desc:'Enterprise SIEM with kill chain analytics, network flow analysis, and AI-assisted threat prioritization. Strong compliance reporting.',
+   feats:['Kill chain correlation','Network flow analysis (QFlow)','Offense-based incident management','AI-powered threat prioritization','PCI-DSS / HIPAA compliance']},
+  {icon:'&#127381;',name:'Micro Focus ArcSight ESM',vendor:'Micro Focus',type:'In-House',color:'rgba(139,92,246,.12)',
+   desc:'High-performance enterprise SIEM capable of correlating 100,000 events per second. Strong compliance and multi-tenant capabilities.',
+   feats:['100,000 EPS correlation','Multi-tenancy support','ArcSight Investigate integration','Workflow automation','Categorization and normalization']},
+  {icon:'&#128737;',name:'AlienVault USM',vendor:'AT&T Cybersecurity',type:'In-House / Cloud',color:'rgba(16,185,129,.1)',
+   desc:'Unified Security Management platform combining asset discovery, vulnerability assessment, IDS, SIEM, and behavioral monitoring in one console.',
+   feats:['5-in-1 unified platform','Asset & vulnerability discovery','Built-in IDS (HIDS + NIDS)','Behavioral monitoring','OTX threat intelligence']},
+  {icon:'&#128301;',name:'Elastic SIEM (ELK Stack)',vendor:'Elastic',type:'In-House / Cloud',color:'rgba(251,191,36,.1)',
+   desc:'Open-source SIEM built on Elasticsearch, Logstash, and Kibana. Highly scalable and customizable. Growing adoption in enterprise SOCs.',
+   feats:['Open-source and free tier','Beats lightweight shippers','Kibana visualization','Horizontal scalability','Detection rules engine']},
+  {icon:'&#128200;',name:'LogRhythm SIEM',vendor:'LogRhythm',type:'In-House',color:'rgba(6,182,212,.1)',
+   desc:'End-to-end SIEM with patented high-performance processing, integrated UEBA, and automated response capabilities designed for SOC workflows.',
+   feats:['Patented high-performance engine','Integrated UEBA module','SmartResponse automated playbooks','Network and endpoint monitoring','SOC maturity framework']},
+];
+function buildSolutions(){
+  document.getElementById('sol-grid').innerHTML=SOLUTIONS.map(s=>`
+    <div class="sol-card">
+      <div class="sol-logo">${s.icon}</div>
+      <div class="sol-name">${e(s.name)}</div>
+      <div style="font-size:9px;color:var(--text3);margin-bottom:4px">${e(s.vendor)}</div>
+      <span class="sol-type bage-blue" style="background:${s.color};color:var(--blue2);border:1px solid rgba(59,130,246,.2)">${e(s.type)}</span>
+      <div class="sol-desc">${e(s.desc)}</div>
+      <div class="sol-features">${s.feats.map(f=>`<div class="sol-feat">${e(f)}</div>`).join('')}</div>
+    </div>`).join('');
+}
+
+// ── DEPLOYMENT TYPES ──────────────────────────────────────────────────────────
+const DEP_TYPES=[
+  {icon:'&#127963;',name:'In-House SIEM',color:'var(--blue2)',
+   desc:'Organization purchases and manages the SIEM software and hardware on-premise. Full control over customization, data, and rules.',
+   pros:['Full control over system and data','Customizable to any requirement','Rules updated on-demand','No third-party data access'],
+   cons:['Expensive setup and operation','Requires trained in-house staff','Hard to scale quickly','High licensing and maintenance costs']},
+  {icon:'&#9729;',name:'Cloud-Based SIEM',color:'var(--green)',
+   desc:'SIEM delivered as a service (SaaS) from a third-party vendor. Organization subscribes to the platform without managing infrastructure.',
+   pros:['No hardware to install or maintain','Continuously updated by vendor','Unlimited storage options','Operational support included'],
+   cons:['May not realize full SIEM functionality','High cost for full feature set','Data privacy concerns (third-party)','Dependent on vendor for updates']},
+  {icon:'&#129489;',name:'Managed SIEM',color:'var(--purple)',
+   desc:'SIEM deployed (on-premise or cloud) and operated by a Managed Security Service Provider (MSSP). Includes both technology and skilled personnel.',
+   pros:['No need to hire specialized staff','MSSP provides skilled analysts','Lower cost than full in-house','Compliance support included'],
+   cons:['Data managed by third party','Risk if wrong MSSP selected','False positive analysis still required','Less control over custom rules']},
+];
+function buildDeployment(){
+  document.getElementById('dep-grid').innerHTML=DEP_TYPES.map(d=>`
+    <div class="dep-card">
+      <div class="dep-icon">${d.icon}</div>
+      <div class="dep-name" style="color:${d.color}">${e(d.name)}</div>
+      <div class="dep-desc">${e(d.desc)}</div>
+      <div class="dep-pros">
+        <div class="dep-subtitle">Advantages</div>
+        ${d.pros.map(p=>`<div class="dep-item">${e(p)}</div>`).join('')}
+      </div>
+      <div class="dep-cons">
+        <div class="dep-subtitle">Disadvantages</div>
+        ${d.cons.map(c=>`<div class="dep-item">${e(c)}</div>`).join('')}
+      </div>
+    </div>`).join('');
+}
+
+// ── CONTROLS ─────────────────────────────────────────────────────────────────
+function injectEvent(){
+  const log=makeLog();
+  renderDashboard();
+  renderLogTable();
+  renderAlerts();
+}
+
+function refreshAll(){
+  for(let i=0;i<rnd(1,4);i++) makeLog();
+  renderDashboard();
+  renderLogTable();
+  renderAlerts();
+}
+
+function exportData(){alert('Exported '+COUNTS.total+' events to siem-export-'+new Date().toISOString().slice(0,10)+'.csv');}
+
+function globalSearch(){
+  const q=document.getElementById('gsearch').value;
+  if(q.length>2){
+    document.getElementById('log-filter').value=q;
+    switchPage('logview',null);
+    filterLogs();
+  }
+}
+
+// ── INIT ─────────────────────────────────────────────────────────────────────
+window.onload=function(){
+  seed();
+  renderDashboard();
+  buildLogSources();
+  renderLogTable();
+  renderAlerts();
+  buildCorrelation();
+  buildCapabilities();
+  buildArchitecture();
+  buildSolutions();
+  buildDeployment();
+  setInterval(()=>{
+    if(Math.random()<0.55){makeLog();renderDashboard();
+      if(document.getElementById('page-logview').classList.contains('active')) renderLogTable();
+    }
+  },3200);
+};
+</script>
+</body>
+</html>
