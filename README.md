@@ -13,26 +13,12 @@ A daily, hands-on deep dive into Security Operations — building real tools, wr
 | 05 | Web Application Security | [webapp_security_lab.html](day-05/lab/) |
 | 06 | Live System Analysis | [live_analysis_console.html](day-06/lab/) |
 | 07 | Log Management Platform | [siem_log_platform.html](day-07/lab/) |
-| 08 | SIEM — Module 04 | [siem_platform.html](day-08/lab/) |
+| 08 | SIEM Module 04 — Platform & Architecture | [siem_platform.html](day-08/lab/) |
+| 09 | SIEM Detection Engine — Use Cases & Sizing | [siem_detection_engine.html](day-09/lab/) |
 
 ```bash
 git clone https://github.com/Odaimherat/soc-journey
-open day-08/lab/siem_platform.html   # Full SIEM platform — Module 04
+open day-09/lab/siem_detection_engine.html
 ```
 
 All labs open in any browser. No install or server required.
-
----
-
-## Topics Covered
-
-| Day | Module | Topic |
-|-----|--------|-------|
-| 01 | 01 | Security Operations and SOC Foundations |
-| 02 | 01 | SOC Processes, Models, Maturity, KPIs |
-| 03 | 02 | Cyber Threats, IoCs, TTPs |
-| 04 | 02 | Password Attacks, Malware, APTs |
-| 05 | 02 | Application-Level Attacks and IoC Detection |
-| 06 | 02 | Live System Analysis and Hacking Methodology |
-| 07 | 03 | Incidents, Events, and Log Management |
-| 08 | 04 | Incident Detection with SIEM |
