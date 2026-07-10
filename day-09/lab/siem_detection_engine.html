@@ -1,0 +1,1415 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src 'none'; connect-src 'none'; form-action 'none'; base-uri 'none';">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SecureSIEM | Detection Engine — Module 04 Day 09</title>
+<style>
+:root{
+  --bg:#060910;--sidebar:#0a0f1e;--panel:#101828;--panel2:#151f30;
+  --border:#1e2d45;--border2:#263548;
+  --blue:#3b82f6;--blue2:#60a5fa;--blue3:#1d4ed8;
+  --red:#f43f5e;--orange:#f97316;--yellow:#fbbf24;
+  --green:#10b981;--purple:#8b5cf6;--cyan:#06b6d4;--pink:#ec4899;
+  --teal:#14b8a6;--indigo:#6366f1;
+  --text:#e2e8f0;--text2:#94a3b8;--text3:#475569;
+  --mono:'Courier New',monospace;--sans:-apple-system,'Segoe UI',sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+html,body{height:100%;overflow:hidden;}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:12px;display:flex;flex-direction:column;}
+
+/* TOP BAR */
+.topbar{height:46px;background:var(--sidebar);border-bottom:1px solid var(--border);
+  display:flex;align-items:center;padding:0 14px;gap:10px;flex-shrink:0;}
+.tb-logo{display:flex;align-items:center;gap:8px;}
+.tb-logo-box{width:28px;height:28px;background:linear-gradient(135deg,var(--blue),var(--purple));
+  border-radius:6px;display:flex;align-items:center;justify-content:center;
+  font-weight:900;font-size:13px;color:#fff;}
+.tb-logo-text{font-size:14px;font-weight:700;letter-spacing:-.2px;}
+.tb-logo-text span{color:var(--blue2);}
+.tb-ver{font-size:10px;color:var(--text3);background:var(--panel2);border:1px solid var(--border);
+  padding:1px 6px;border-radius:3px;font-family:var(--mono);}
+.tb-module{font-size:10px;background:rgba(139,92,246,.12);color:var(--purple);
+  border:1px solid rgba(139,92,246,.3);padding:2px 8px;border-radius:4px;font-weight:600;}
+.tb-search{flex:1;max-width:480px;display:flex;align-items:center;gap:6px;
+  background:var(--panel);border:1px solid var(--border);border-radius:5px;padding:5px 10px;}
+.tb-search:focus-within{border-color:var(--blue);}
+.tb-search input{background:none;border:none;color:var(--text);font-size:11px;
+  font-family:var(--mono);outline:none;flex:1;}
+.tb-search input::placeholder{color:var(--text3);}
+.tb-sep{flex:1;}
+.live-pill{display:flex;align-items:center;gap:4px;font-size:10px;font-weight:700;
+  color:var(--green);background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.25);
+  padding:3px 8px;border-radius:4px;}
+.live-dot{width:6px;height:6px;border-radius:50%;background:var(--green);animation:blink 1.4s infinite;}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
+.tb-btn{padding:4px 10px;border-radius:4px;font-size:11px;cursor:pointer;
+  border:1px solid var(--border);background:var(--panel2);color:var(--text2);transition:all .15s;}
+.tb-btn:hover{border-color:var(--blue);color:var(--blue2);}
+.tb-btn.accent{background:var(--blue3);border-color:var(--blue);color:#fff;font-weight:600;}
+.tb-btn.accent:hover{background:var(--blue);}
+#topclk{font-size:11px;color:var(--text3);font-family:var(--mono);}
+
+/* APP BODY */
+.app{flex:1;display:flex;overflow:hidden;}
+
+/* SIDEBAR */
+.sb{width:200px;background:var(--sidebar);border-right:1px solid var(--border);
+  overflow-y:auto;flex-shrink:0;display:flex;flex-direction:column;}
+.sb-sec{padding:10px 8px 4px;}
+.sb-lbl{font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;
+  letter-spacing:1.2px;padding:0 6px;margin-bottom:3px;}
+.sb-it{display:flex;align-items:center;gap:7px;padding:6px 8px;border-radius:5px;
+  cursor:pointer;color:var(--text2);font-size:11px;transition:all .14s;}
+.sb-it:hover{background:rgba(255,255,255,.04);color:var(--text);}
+.sb-it.on{background:rgba(59,130,246,.1);color:var(--blue2);}
+.sb-it .ic{font-size:12px;width:14px;text-align:center;}
+.sb-badge{margin-left:auto;font-size:9px;font-weight:700;padding:1px 5px;border-radius:8px;}
+.sb-badge.red{background:rgba(244,63,94,.2);color:var(--red);}
+.sb-badge.orange{background:rgba(249,115,22,.17);color:var(--orange);}
+.sb-badge.dim{background:var(--panel2);color:var(--text3);}
+.sb-div{border-top:1px solid var(--border);margin:5px 0;}
+
+/* CONTENT */
+.content{flex:1;display:flex;flex-direction:column;overflow:hidden;}
+
+/* PAGE TABS */
+.ptabs{height:34px;background:var(--panel);border-bottom:1px solid var(--border);
+  display:flex;align-items:center;padding:0 12px;flex-shrink:0;}
+.ptab{padding:7px 13px;font-size:11px;color:var(--text3);cursor:pointer;
+  border-bottom:2px solid transparent;transition:all .14s;}
+.ptab:hover{color:var(--text2);}
+.ptab.on{color:var(--blue2);border-bottom-color:var(--blue);}
+.ptabs-r{margin-left:auto;display:flex;gap:6px;align-items:center;}
+
+/* PAGES */
+.pages{flex:1;display:flex;overflow:hidden;}
+.pg{display:none;flex:1;overflow:auto;flex-direction:column;}
+.pg.on{display:flex;}
+
+/* CARDS */
+.card{background:var(--panel);border:1px solid var(--border);border-radius:7px;overflow:hidden;}
+.ch{background:rgba(59,130,246,.04);border-bottom:1px solid var(--border);
+  padding:8px 12px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+.ct{font-size:11px;font-weight:600;}
+.bge{font-size:9px;padding:2px 6px;border-radius:4px;font-weight:700;}
+.bge-red{background:rgba(244,63,94,.14);color:var(--red);border:1px solid rgba(244,63,94,.28);}
+.bge-orange{background:rgba(249,115,22,.12);color:var(--orange);border:1px solid rgba(249,115,22,.24);}
+.bge-green{background:rgba(16,185,129,.1);color:var(--green);border:1px solid rgba(16,185,129,.2);}
+.bge-blue{background:rgba(59,130,246,.1);color:var(--blue2);border:1px solid rgba(59,130,246,.2);}
+.bge-dim{background:var(--panel2);color:var(--text3);border:1px solid var(--border);}
+.bge-purple{background:rgba(139,92,246,.1);color:var(--purple);border:1px solid rgba(139,92,246,.2);}
+
+/* LOG TABLE */
+.lt{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:11px;}
+.lt thead th{position:sticky;top:0;background:var(--panel2);padding:5px 8px;text-align:left;
+  font-size:9px;text-transform:uppercase;letter-spacing:.7px;color:var(--text3);
+  border-bottom:1px solid var(--border);font-family:var(--sans);font-weight:600;}
+.lt tbody tr{border-bottom:1px solid rgba(30,45,69,.5);cursor:pointer;transition:background .08s;}
+.lt tbody tr:hover{background:rgba(255,255,255,.025);}
+.lt tbody tr.sel{background:rgba(59,130,246,.07);}
+.lt td{padding:5px 8px;vertical-align:top;}
+.sb2{font-size:9px;font-weight:700;padding:2px 5px;border-radius:3px;}
+.CRITICAL{background:rgba(244,63,94,.18);color:var(--red);}
+.HIGH{background:rgba(249,115,22,.15);color:var(--orange);}
+.MEDIUM{background:rgba(251,191,36,.1);color:var(--yellow);}
+.LOW{background:rgba(16,185,129,.1);color:var(--green);}
+.INFO{background:rgba(59,130,246,.1);color:var(--blue2);}
+
+/* DETECTION ENGINE PAGE */
+.de-layout{display:grid;grid-template-columns:300px 1fr;height:100%;overflow:hidden;}
+.de-left{border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;}
+.de-right{display:flex;flex-direction:column;overflow:hidden;}
+.rule-list{overflow-y:auto;flex:1;}
+.rule-item{padding:10px 12px;border-bottom:1px solid rgba(30,45,69,.6);cursor:pointer;transition:background .12s;}
+.rule-item:hover{background:rgba(255,255,255,.025);}
+.rule-item.on{background:rgba(59,130,246,.07);border-left:2px solid var(--blue);}
+.ri-top{display:flex;align-items:center;gap:6px;margin-bottom:4px;}
+.ri-name{font-size:12px;font-weight:600;flex:1;}
+.ri-status{font-size:9px;padding:2px 6px;border-radius:3px;font-weight:700;}
+.rs-active{background:rgba(16,185,129,.15);color:var(--green);}
+.rs-tuning{background:rgba(251,191,36,.1);color:var(--yellow);}
+.rs-disabled{background:var(--panel2);color:var(--text3);}
+.ri-meta{font-size:9px;color:var(--text3);display:flex;gap:8px;}
+
+.rule-detail{overflow-y:auto;flex:1;padding:14px;}
+.rd-h{margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border);}
+.rd-title{font-size:14px;font-weight:700;margin-bottom:5px;}
+.rd-badges{display:flex;gap:6px;flex-wrap:wrap;}
+.sec-title{font-size:9px;text-transform:uppercase;letter-spacing:1.2px;color:var(--text3);margin:12px 0 6px;}
+.logic-box{background:var(--bg);border:1px solid var(--border);border-radius:5px;
+  padding:10px;font-family:var(--mono);font-size:10px;line-height:1.7;color:var(--cyan);}
+.regex-box{background:var(--bg);border:1px solid rgba(249,115,22,.25);border-radius:5px;
+  padding:10px;font-family:var(--mono);font-size:10px;line-height:1.8;color:var(--orange);}
+.playbook-steps{margin-top:6px;}
+.pb-step{display:flex;gap:8px;padding:6px;background:var(--panel2);border:1px solid var(--border);
+  border-radius:4px;margin-bottom:5px;}
+.pb-num{width:20px;height:20px;border-radius:50%;display:flex;align-items:center;
+  justify-content:center;font-size:9px;font-weight:700;flex-shrink:0;}
+.pb-step.atk .pb-num{background:var(--red);color:#fff;}
+.pb-step.def .pb-num{background:var(--green);color:#000;}
+.pb-step.inv .pb-num{background:var(--blue);color:#fff;}
+.pb-txt{font-size:10px;line-height:1.5;color:var(--text2);}
+
+/* CONTEXT DATA PAGE */
+.ctx-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;padding:12px;overflow-y:auto;}
+.ctx-card{background:var(--panel);border:1px solid var(--border);border-radius:7px;padding:14px;}
+.ctx-icon{font-size:22px;margin-bottom:6px;}
+.ctx-type{font-size:12px;font-weight:700;margin-bottom:4px;}
+.ctx-source{font-size:10px;color:var(--text3);margin-bottom:6px;}
+.ctx-desc{font-size:11px;color:var(--text2);line-height:1.6;}
+.ctx-examples{margin-top:8px;display:flex;flex-wrap:wrap;gap:4px;}
+.ctx-ex{font-size:9px;padding:2px 7px;background:var(--panel2);border:1px solid var(--border);
+  border-radius:3px;color:var(--text3);}
+
+/* EPS/SIZING PAGE */
+.sizing-layout{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:12px;overflow-y:auto;}
+.sizing-card{background:var(--panel);border:1px solid var(--border);border-radius:7px;padding:14px;}
+.eps-calc{display:flex;flex-direction:column;gap:10px;}
+.eps-row{display:flex;align-items:center;gap:10px;}
+.eps-lbl{min-width:130px;font-size:11px;color:var(--text2);}
+.eps-input{background:var(--bg);border:1px solid var(--border);color:var(--text);
+  padding:5px 8px;border-radius:4px;font-size:12px;font-family:var(--mono);width:100px;outline:none;}
+.eps-input:focus{border-color:var(--blue);}
+.eps-unit{font-size:10px;color:var(--text3);}
+.eps-result{background:var(--bg);border:1px solid var(--border);border-radius:5px;padding:12px;margin-top:8px;}
+.eps-result .r-val{font-size:24px;font-weight:800;font-family:var(--mono);}
+.eps-result .r-lbl{font-size:10px;color:var(--text3);margin-top:2px;}
+.hw-table{width:100%;border-collapse:collapse;}
+.hw-table th{padding:6px 8px;text-align:left;font-size:9px;text-transform:uppercase;
+  letter-spacing:.7px;color:var(--text3);border-bottom:1px solid var(--border);}
+.hw-table td{padding:7px 8px;border-bottom:1px solid rgba(30,45,69,.4);font-size:11px;}
+.hw-table td:first-child{color:var(--text3);}
+.hw-mid{color:var(--blue2)!important;font-family:var(--mono);}
+.hw-high{color:var(--green)!important;font-family:var(--mono);}
+
+/* ARCH PAGE */
+.arch-layout{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;padding:12px;overflow-y:auto;}
+.arch-card{background:var(--panel);border:1px solid var(--border);border-radius:7px;padding:14px;cursor:pointer;transition:border-color .2s;}
+.arch-card:hover{border-color:var(--blue);}
+.arch-tag{font-size:10px;font-weight:700;padding:3px 8px;border-radius:4px;display:inline-block;margin-bottom:8px;}
+.arch-name{font-size:12px;font-weight:700;margin-bottom:6px;}
+.arch-desc{font-size:10px;color:var(--text2);line-height:1.6;margin-bottom:10px;}
+.arch-layers{display:flex;flex-direction:column;gap:3px;margin-top:8px;}
+.arch-layer{display:flex;align-items:center;gap:6px;font-size:10px;padding:4px 8px;border-radius:3px;}
+.al-in{background:rgba(59,130,246,.08);border:1px solid rgba(59,130,246,.15);color:var(--blue2);}
+.al-mssp{background:rgba(249,115,22,.08);border:1px solid rgba(249,115,22,.15);color:var(--orange);}
+.al-cloud{background:rgba(16,185,129,.07);border:1px solid rgba(16,185,129,.13);color:var(--green);}
+.al-joint{background:rgba(139,92,246,.08);border:1px solid rgba(139,92,246,.15);color:var(--purple);}
+
+/* DETECTION PAGE (anomaly vs sig) */
+.det-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:12px;overflow-y:auto;}
+.det-card{background:var(--panel);border:1px solid var(--border);border-radius:7px;padding:14px;}
+.det-vs-table{width:100%;border-collapse:collapse;margin-top:8px;}
+.det-vs-table th{padding:7px 10px;text-align:left;font-size:10px;font-weight:700;
+  background:var(--panel2);border:1px solid var(--border);}
+.det-vs-table td{padding:7px 10px;border:1px solid rgba(30,45,69,.4);font-size:11px;color:var(--text2);}
+
+/* STAT MINI */
+.stat-row{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;padding:10px 12px;flex-shrink:0;}
+.stat-m{background:var(--panel);border:1px solid var(--border);border-radius:6px;padding:9px;text-align:center;}
+.stat-m .sv{font-size:20px;font-weight:800;line-height:1;}
+.stat-m .sk{font-size:9px;color:var(--text3);margin-top:3px;text-transform:uppercase;letter-spacing:.4px;}
+
+/* DETAIL PANEL */
+.dp{width:330px;border-left:1px solid var(--border);background:var(--panel);
+  display:flex;flex-direction:column;overflow:hidden;flex-shrink:0;}
+.dp-h{padding:8px 12px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+.dp-title{font-size:11px;font-weight:600;}
+.dp-x{color:var(--text3);cursor:pointer;padding:2px 5px;border-radius:3px;}
+.dp-x:hover{color:var(--red);background:var(--panel2);}
+.dp-body{overflow-y:auto;flex:1;padding:12px;}
+.dp-row{display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid rgba(30,45,69,.5);gap:6px;}
+.dp-k{font-size:10px;color:var(--text3);min-width:90px;}
+.dp-v{font-size:10px;font-family:var(--mono);text-align:right;word-break:break-all;}
+.rawbox{background:var(--bg);border:1px solid var(--border);border-radius:4px;
+  padding:8px;font-family:var(--mono);font-size:9px;line-height:1.6;
+  white-space:pre-wrap;color:var(--text3);margin-top:8px;}
+.guidance{background:rgba(16,185,129,.06);border:1px solid rgba(16,185,129,.15);
+  border-radius:4px;padding:8px;font-size:10px;line-height:1.6;margin-top:8px;}
+
+/* LOG VIEWER LAYOUT */
+.lv-wrap{display:flex;flex:1;overflow:hidden;}
+.lv-sources{width:170px;border-right:1px solid var(--border);background:var(--panel);flex-shrink:0;overflow-y:auto;}
+.lv-sh{padding:7px 10px;border-bottom:1px solid var(--border);font-size:9px;
+  font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--text3);}
+.lv-src{padding:7px 10px;border-bottom:1px solid rgba(30,45,69,.4);cursor:pointer;
+  display:flex;align-items:center;gap:7px;transition:background .1s;font-size:10px;}
+.lv-src:hover{background:rgba(255,255,255,.025);}
+.lv-src.on{background:rgba(59,130,246,.08);border-left:2px solid var(--blue);}
+.lv-sdot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
+.lv-scnt{margin-left:auto;font-family:var(--mono);font-size:10px;color:var(--text3);}
+.lv-main{flex:1;display:flex;flex-direction:column;overflow:hidden;}
+.log-tb-bar{padding:6px 10px;background:var(--panel2);border-bottom:1px solid var(--border);
+  display:flex;gap:6px;align-items:center;flex-shrink:0;}
+.lf{background:var(--panel);border:1px solid var(--border);color:var(--text);
+  padding:4px 8px;border-radius:4px;font-size:11px;font-family:var(--mono);flex:1;outline:none;}
+.lf:focus{border-color:var(--blue);}
+.sf-btn{padding:3px 7px;border-radius:3px;font-size:9px;font-weight:700;cursor:pointer;border:1px solid;}
+.sf-ALL{border-color:var(--border);color:var(--text3);}
+.sf-ALL.on{background:var(--panel2);color:var(--text);}
+.sf-CRIT{border-color:rgba(244,63,94,.3);color:var(--red);}
+.sf-CRIT.on{background:rgba(244,63,94,.1);}
+.sf-HIGH{border-color:rgba(249,115,22,.3);color:var(--orange);}
+.sf-HIGH.on{background:rgba(249,115,22,.08);}
+.sf-MED{border-color:rgba(251,191,36,.3);color:var(--yellow);}
+.sf-MED.on{background:rgba(251,191,36,.07);}
+.sf-INFO{border-color:rgba(16,185,129,.3);color:var(--green);}
+.sf-INFO.on{background:rgba(16,185,129,.07);}
+.log-cnt-lbl{font-size:10px;color:var(--text3);}
+.lt-wrap{overflow-y:auto;flex:1;}
+
+/* OVERVIEW */
+.ov-s{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:0 10px 10px;flex-shrink:0;}
+.ov-3{display:grid;grid-template-columns:2fr 1fr;gap:10px;padding:0 10px 10px;}
+.rb-row{display:flex;align-items:center;gap:8px;padding:5px 12px;border-bottom:1px solid rgba(30,45,69,.4);}
+.rb-lbl{min-width:130px;font-size:10px;color:var(--text2);}
+.rb-track{flex:1;background:var(--border);border-radius:2px;height:10px;overflow:hidden;}
+.rb-fill{height:100%;border-radius:2px;}
+.rb-num{min-width:34px;text-align:right;font-size:10px;font-family:var(--mono);color:var(--text3);}
+.ed-row{display:flex;align-items:center;padding:5px 12px;border-bottom:1px solid rgba(30,45,69,.4);}
+.ed-dot{width:8px;height:8px;border-radius:50%;margin-right:7px;flex-shrink:0;}
+.ed-name{flex:1;font-size:11px;}
+.ed-cnt{font-size:10px;font-family:var(--mono);color:var(--text3);}
+.ed-pct{font-size:9px;color:var(--text3);min-width:30px;text-align:right;}
+
+/* NETFLOW PAGE */
+.nf-layout{display:grid;grid-template-columns:1fr 340px;height:100%;overflow:hidden;gap:0;}
+.nf-left{overflow:hidden;display:flex;flex-direction:column;}
+.nf-right{border-left:1px solid var(--border);overflow-y:auto;}
+.nf-feed{overflow-y:auto;flex:1;}
+.nf-row{padding:8px 12px;border-bottom:1px solid rgba(30,45,69,.4);
+  display:grid;grid-template-columns:130px 110px 60px 110px 60px 80px 80px 70px;
+  gap:8px;align-items:center;font-size:11px;font-family:var(--mono);cursor:pointer;transition:background .1s;}
+.nf-row:hover{background:rgba(255,255,255,.025);}
+.nf-row.anomaly{background:rgba(244,63,94,.04);}
+.nf-head{background:var(--panel2);border-bottom:1px solid var(--border);flex-shrink:0;}
+.nf-head .nf-row{cursor:default;font-family:var(--sans);font-size:9px;text-transform:uppercase;
+  letter-spacing:.7px;color:var(--text3);}
+.nf-head .nf-row:hover{background:none;}
+.nf-proto{font-size:10px;padding:2px 5px;border-radius:3px;text-align:center;}
+.proto-TCP{background:rgba(59,130,246,.1);color:var(--blue2);}
+.proto-UDP{background:rgba(249,115,22,.1);color:var(--orange);}
+.proto-ICMP{background:rgba(139,92,246,.1);color:var(--purple);}
+.nf-flag{font-size:9px;padding:2px 5px;border-radius:3px;font-weight:700;}
+.fl-normal{background:rgba(16,185,129,.08);color:var(--green);}
+.fl-anomaly{background:rgba(244,63,94,.15);color:var(--red);}
+.fl-suspect{background:rgba(251,191,36,.1);color:var(--yellow);}
+
+::-webkit-scrollbar{width:4px;height:4px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
+</style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <div class="tb-logo">
+    <div class="tb-logo-box">S</div>
+    <span class="tb-logo-text">Secure<span>SIEM</span></span>
+    <span class="tb-ver">v4.9</span>
+    <span class="tb-module">Module 04 — Day 09</span>
+  </div>
+  <div class="tb-search">
+    <span style="color:var(--text3);font-size:12px">&#128269;</span>
+    <input id="gsearch" placeholder='index=weblogs | regex _raw="\b(union|select|drop)\b"' oninput="globalSearch()">
+    <span style="font-size:9px;color:var(--text3);background:var(--panel2);border:1px solid var(--border);padding:1px 4px;border-radius:2px">SPL</span>
+  </div>
+  <div class="tb-sep"></div>
+  <div class="live-pill"><span class="live-dot"></span>LIVE</div>
+  <select style="background:var(--panel2);border:1px solid var(--border);color:var(--text2);padding:3px 6px;border-radius:4px;font-size:10px" onchange="refreshAll()">
+    <option value="1h" selected>Last 1 hour</option>
+    <option value="24h">Last 24 hours</option>
+    <option value="7d">Last 7 days</option>
+  </select>
+  <button class="tb-btn">&#9881; Config</button>
+  <button class="tb-btn accent" onclick="injectEvent()">&#43; Inject Event</button>
+  <span id="topclk"></span>
+</div>
+
+<div class="app">
+<!-- SIDEBAR -->
+<div class="sb">
+  <div class="sb-sec">
+    <div class="sb-lbl">Overview</div>
+    <div class="sb-it on" onclick="swPage('overview',this)"><span class="ic">&#128202;</span>Dashboard</div>
+    <div class="sb-it" onclick="swPage('alerts',this)"><span class="ic">&#128680;</span>Alerts<span class="sb-badge red" id="sbb-alerts">0</span></div>
+  </div>
+  <div class="sb-div"></div>
+  <div class="sb-sec">
+    <div class="sb-lbl">Log Analysis</div>
+    <div class="sb-it" onclick="swPage('logview',this)"><span class="ic">&#128196;</span>Log Viewer<span class="sb-badge dim" id="sbb-logs">0</span></div>
+    <div class="sb-it" onclick="swPage('netflow',this)"><span class="ic">&#127759;</span>NetFlow Monitor</div>
+  </div>
+  <div class="sb-div"></div>
+  <div class="sb-sec">
+    <div class="sb-lbl">Detection</div>
+    <div class="sb-it" onclick="swPage('detengine',this)"><span class="ic">&#128270;</span>Detection Engine<span class="sb-badge orange" id="sbb-rules">0</span></div>
+    <div class="sb-it" onclick="swPage('detection',this)"><span class="ic">&#9889;</span>Sig vs Anomaly</div>
+  </div>
+  <div class="sb-div"></div>
+  <div class="sb-sec">
+    <div class="sb-lbl">SIEM Design</div>
+    <div class="sb-it" onclick="swPage('contextdata',this)"><span class="ic">&#127800;</span>Contextual Data</div>
+    <div class="sb-it" onclick="swPage('sizing',this)"><span class="ic">&#128200;</span>EPS Sizing Tool</div>
+    <div class="sb-it" onclick="swPage('arch',this)"><span class="ic">&#127963;</span>Deploy Architectures</div>
+  </div>
+  <div class="sb-div"></div>
+  <div class="sb-sec">
+    <div class="sb-lbl">Log Sources</div>
+    <div style="padding:4px 8px;font-size:10px;color:var(--text3);display:flex;align-items:center;gap:5px"><span style="width:7px;height:7px;border-radius:50%;background:var(--green);display:inline-block"></span>Windows<span id="ssb-win" style="margin-left:auto;font-family:var(--mono);font-size:10px">0</span></div>
+    <div style="padding:4px 8px;font-size:10px;color:var(--text3);display:flex;align-items:center;gap:5px"><span style="width:7px;height:7px;border-radius:50%;background:var(--orange);display:inline-block"></span>Linux<span id="ssb-linux" style="margin-left:auto;font-family:var(--mono);font-size:10px">0</span></div>
+    <div style="padding:4px 8px;font-size:10px;color:var(--text3);display:flex;align-items:center;gap:5px"><span style="width:7px;height:7px;border-radius:50%;background:var(--cyan);display:inline-block"></span>Firewall<span id="ssb-fw" style="margin-left:auto;font-family:var(--mono);font-size:10px">0</span></div>
+    <div style="padding:4px 8px;font-size:10px;color:var(--text3);display:flex;align-items:center;gap:5px"><span style="width:7px;height:7px;border-radius:50%;background:var(--purple);display:inline-block"></span>Web<span id="ssb-web" style="margin-left:auto;font-family:var(--mono);font-size:10px">0</span></div>
+    <div style="padding:4px 8px;font-size:10px;color:var(--text3);display:flex;align-items:center;gap:5px"><span style="width:7px;height:7px;border-radius:50%;background:var(--red);display:inline-block"></span>IDS<span id="ssb-ids" style="margin-left:auto;font-family:var(--mono);font-size:10px">0</span></div>
+  </div>
+</div>
+
+<!-- CONTENT -->
+<div class="content">
+<div class="ptabs">
+  <div class="ptab on" id="ptab-label">Dashboard</div>
+  <div class="ptabs-r">
+    <button class="tb-btn" onclick="exportLogs()">&#128190; Export</button>
+    <button class="tb-btn" onclick="refreshAll()">&#8635; Refresh</button>
+    <span id="refresh-lbl" style="font-size:10px;color:var(--text3)">just now</span>
+  </div>
+</div>
+
+<div class="pages">
+
+<!-- ═══ DASHBOARD ═══ -->
+<div class="pg on" id="pg-overview">
+  <div class="stat-row" id="stat-row"></div>
+  <div class="ov-s">
+    <div class="card">
+      <div class="ch"><span class="ct">Log Ingestion Rate by Source</span><span class="bge bge-blue" id="ev-total-b">0 events</span></div>
+      <div id="rate-bars"></div>
+    </div>
+    <div class="card">
+      <div class="ch"><span class="ct">Event Type Distribution</span></div>
+      <div id="evt-dist"></div>
+    </div>
+  </div>
+  <div class="ov-3">
+    <div class="card">
+      <div class="ch"><span class="ct">Recent Critical &amp; High Security Events</span><span class="bge bge-red" id="rec-b">0</span></div>
+      <div id="rec-events"></div>
+    </div>
+    <div class="card">
+      <div class="ch"><span class="ct">Detection Rule Status</span></div>
+      <div id="rule-status-widget" style="padding:10px"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ ALERTS ═══ -->
+<div class="pg" id="pg-alerts">
+  <div style="overflow-y:auto;flex:1;padding:12px" id="alerts-body"></div>
+</div>
+
+<!-- ═══ LOG VIEWER ═══ -->
+<div class="pg" id="pg-logview">
+  <div class="lv-wrap">
+    <div class="lv-sources">
+      <div class="lv-sh">Sources</div>
+      <div id="lv-src-list"></div>
+    </div>
+    <div class="lv-main">
+      <div class="log-tb-bar">
+        <input class="lf" id="log-filter" placeholder='Filter: EventID:4625  host:WS-FINANCE  src_ip:185.220.101.5  severity:CRITICAL' oninput="filterLogs()">
+        <span class="sf-btn sf-ALL on" onclick="setSev('ALL',this)">ALL</span>
+        <span class="sf-btn sf-CRIT" onclick="setSev('CRITICAL',this)">CRIT</span>
+        <span class="sf-btn sf-HIGH" onclick="setSev('HIGH',this)">HIGH</span>
+        <span class="sf-btn sf-MED" onclick="setSev('MEDIUM',this)">MED</span>
+        <span class="sf-btn sf-INFO" onclick="setSev('INFO',this)">INFO</span>
+        <span class="log-cnt-lbl" id="log-cnt">0</span>
+      </div>
+      <div class="lt-wrap">
+        <table class="lt">
+          <thead><tr>
+            <th style="width:130px">Timestamp</th>
+            <th style="width:68px">Severity</th>
+            <th style="width:70px">Event ID</th>
+            <th style="width:100px">Host</th>
+            <th style="width:95px">Source</th>
+            <th>Message</th>
+          </tr></thead>
+          <tbody id="log-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="dp" id="dp">
+      <div class="dp-h"><span class="dp-title">Event Details</span><span class="dp-x" onclick="clearDP()">&#10005;</span></div>
+      <div class="dp-body" id="dp-body"><div style="color:var(--text3);text-align:center;padding:28px;font-size:11px">Select a log entry to inspect</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ NETFLOW ═══ -->
+<div class="pg" id="pg-netflow">
+  <div class="nf-layout">
+    <div class="nf-left">
+      <div class="ch" style="flex-shrink:0">
+        <span class="ct">NetFlow / Traffic Flow Monitor — RFC 3954</span>
+        <div style="display:flex;gap:6px">
+          <span class="bge bge-red" id="nf-anomaly-count">0 anomalies</span>
+          <button class="tb-btn" onclick="generateNetflow()">&#8635; Generate Flows</button>
+        </div>
+      </div>
+      <div class="nf-head">
+        <div class="nf-row">
+          <span>Timestamp</span><span>Src IP</span><span>Src Port</span><span>Dst IP</span><span>Dst Port</span><span>Protocol</span><span>Bytes</span><span>Flag</span>
+        </div>
+      </div>
+      <div class="nf-feed" id="nf-feed"></div>
+    </div>
+    <div class="nf-right" style="padding:12px">
+      <div style="font-size:11px;font-weight:700;color:var(--blue2);margin-bottom:10px">NetFlow Anomaly Analysis</div>
+      <div id="nf-anomaly-panel">
+        <div style="color:var(--text3);font-size:11px">Click any anomalous flow to investigate</div>
+      </div>
+      <div style="margin-top:14px;font-size:11px;font-weight:700;color:var(--text2);margin-bottom:8px">Protocol Distribution</div>
+      <div id="nf-proto-dist"></div>
+      <div style="margin-top:14px;padding:10px;background:rgba(59,130,246,.05);border:1px solid rgba(59,130,246,.15);border-radius:5px;font-size:10px;line-height:1.7;color:var(--text2)">
+        <strong style="color:var(--blue2)">NetFlow (RFC 3954)</strong> — Cisco-originated protocol collecting IP traffic info from networks. Routers generate NetFlow records exported as UDP/SCTP packets to a <strong>NetFlow Collector</strong>. SIEM ingests flow data alongside log data for anomaly detection, bandwidth analysis, and C2 beacon identification.
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ DETECTION ENGINE ═══ -->
+<div class="pg" id="pg-detengine">
+  <div class="de-layout">
+    <div class="de-left">
+      <div class="ch" style="flex-shrink:0">
+        <span class="ct">Correlation Rules</span>
+        <span class="bge bge-green" id="active-rule-count">0 active</span>
+      </div>
+      <div class="rule-list" id="rule-list"></div>
+    </div>
+    <div class="de-right">
+      <div class="ch" style="flex-shrink:0">
+        <span class="ct" id="rd-title">Select a rule</span>
+        <div style="display:flex;gap:6px" id="rd-actions"></div>
+      </div>
+      <div class="rule-detail" id="rule-detail">
+        <div style="color:var(--text3);text-align:center;padding:40px;font-size:11px">Select a detection rule to view its logic, regex patterns, event sources, and response playbook</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SIG VS ANOMALY ═══ -->
+<div class="pg" id="pg-detection">
+  <div class="det-grid">
+    <div class="det-card">
+      <div style="font-size:13px;font-weight:700;color:var(--blue2);margin-bottom:6px">Signature-Based Detection</div>
+      <div style="font-size:11px;color:var(--text2);line-height:1.7;margin-bottom:12px">Compares events against a database of known attack signatures. Detects intrusion attempts based on predefined patterns in IDS, WAF, and SIEM rules. Fast and reliable for known threats. Cannot detect novel attacks.</div>
+      <table class="det-vs-table">
+        <thead><tr><th>Aspect</th><th>Signature-Based</th></tr></thead>
+        <tbody>
+          <tr><td>Approach</td><td>Pattern / Rule matching</td></tr>
+          <tr><td>Detection type</td><td>Known attacks only</td></tr>
+          <tr><td>Analytics type</td><td>Security analytics rules</td></tr>
+          <tr><td>Driver</td><td>Human-driven (rule authoring)</td></tr>
+          <tr><td>False positive rate</td><td>Low (when tuned)</td></tr>
+          <tr><td>Zero-day detection</td><td>No</td></tr>
+          <tr><td>Example tools</td><td>Snort IDS, ModSecurity WAF, SIEM regex rules</td></tr>
+          <tr><td>Update required</td><td>Frequent signature updates</td></tr>
+        </tbody>
+      </table>
+      <div style="margin-top:10px;font-size:10px;font-weight:700;color:var(--text3);margin-bottom:6px">Example: Snort IDS Rule</div>
+      <div class="regex-box">alert tcp any any -> $HTTP_SERVERS $HTTP_PORTS
+  (msg:"SQL Injection Attempt";
+   content:"' OR '1'='1";
+   nocase; sid:1000001; rev:1;)</div>
+    </div>
+    <div class="det-card">
+      <div style="font-size:13px;font-weight:700;color:var(--purple);margin-bottom:6px">Anomaly-Based Detection (UEBA)</div>
+      <div style="font-size:11px;color:var(--text2);line-height:1.7;margin-bottom:12px">Establishes a behavioral baseline and detects deviations from it. User and Entity Behavior Analytics (UEBA) uses machine learning to identify suspicious behavior patterns. Detects unknown and novel attacks.</div>
+      <table class="det-vs-table">
+        <thead><tr><th>Aspect</th><th>Anomaly-Based (UEBA)</th></tr></thead>
+        <tbody>
+          <tr><td>Approach</td><td>Behavioral baseline deviation</td></tr>
+          <tr><td>Detection type</td><td>Known + Unknown attacks</td></tr>
+          <tr><td>Analytics type</td><td>User &amp; Entity Behavior Analytics</td></tr>
+          <tr><td>Driver</td><td>Machine learning driven</td></tr>
+          <tr><td>False positive rate</td><td>Higher (tuning required)</td></tr>
+          <tr><td>Zero-day detection</td><td>Yes (behavioral deviation)</td></tr>
+          <tr><td>Example tools</td><td>Splunk UBA, IBM QRadar UEBA, Elastic ML</td></tr>
+          <tr><td>Update required</td><td>Model retraining / feedback loop</td></tr>
+        </tbody>
+      </table>
+      <div style="margin-top:10px;font-size:10px;font-weight:700;color:var(--text3);margin-bottom:6px">Example: UEBA Anomaly Rule</div>
+      <div class="logic-box">WHEN:
+  user_login_time NOT IN baseline_hours[user]
+  AND login_source_ip NOT IN known_ips[user]
+  AND file_access_count > 3x baseline[user]
+THEN:
+  risk_score += 40
+  Alert: "Behavioral Anomaly Detected — UEBA"
+  Requires: manual investigation</div>
+    </div>
+    <div class="det-card" style="grid-column:1/-1">
+      <div style="font-size:13px;font-weight:700;color:var(--green);margin-bottom:10px">Combined Approach — How Real SIEMs Use Both</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
+        <div style="background:var(--panel2);border:1px solid var(--border);border-radius:5px;padding:10px">
+          <div style="font-size:10px;font-weight:700;color:var(--blue2);margin-bottom:5px">Layer 1: Signature Rules</div>
+          <div style="font-size:10px;color:var(--text2);line-height:1.6">Fire on known patterns. Fast. Low latency. Used for known CVEs, attack signatures, and compliance checks. Generates most L1 alerts.</div>
+        </div>
+        <div style="background:var(--panel2);border:1px solid var(--border);border-radius:5px;padding:10px">
+          <div style="font-size:10px;font-weight:700;color:var(--purple);margin-bottom:5px">Layer 2: Behavioral Analytics</div>
+          <div style="font-size:10px;color:var(--text2);line-height:1.6">Continuous baseline monitoring. Slow burn detection over hours/days. Catches insider threats, APTs, credential abuse that signatures miss.</div>
+        </div>
+        <div style="background:var(--panel2);border:1px solid var(--border);border-radius:5px;padding:10px">
+          <div style="font-size:10px;font-weight:700;color:var(--green);margin-bottom:5px">Layer 3: Risk Scoring</div>
+          <div style="font-size:10px;color:var(--text2);line-height:1.6">Combines signal from both layers. A user triggering 3 signature rules + UEBA deviation = high-risk incident. Reduces noise through correlation.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ CONTEXTUAL DATA ═══ -->
+<div class="pg" id="pg-contextdata">
+  <div style="padding:10px 12px;border-bottom:1px solid var(--border);background:var(--panel2);flex-shrink:0;font-size:11px;color:var(--text2);line-height:1.5">
+    Log feeds alone are not enough. SIEM needs <strong style="color:var(--blue2)">contextual data</strong> to improve situational awareness — enriching raw log events with user, asset, vulnerability, and threat information to determine if an event is truly malicious.
+  </div>
+  <div class="ctx-grid" id="ctx-grid"></div>
+</div>
+
+<!-- ═══ SIZING TOOL ═══ -->
+<div class="pg" id="pg-sizing">
+  <div class="sizing-layout">
+    <div class="sizing-card">
+      <div style="font-size:13px;font-weight:700;color:var(--blue2);margin-bottom:14px">EPS Calculator — SIEM Sizing Tool</div>
+      <div class="eps-calc">
+        <div class="eps-row">
+          <span class="eps-lbl">Firewall events/day</span>
+          <input class="eps-input" id="eps-fw" type="number" value="500000" oninput="calcEPS()">
+          <span class="eps-unit">events</span>
+        </div>
+        <div class="eps-row">
+          <span class="eps-lbl">Windows Security/day</span>
+          <input class="eps-input" id="eps-win" type="number" value="200000" oninput="calcEPS()">
+          <span class="eps-unit">events</span>
+        </div>
+        <div class="eps-row">
+          <span class="eps-lbl">Linux Syslog/day</span>
+          <input class="eps-input" id="eps-linux" type="number" value="100000" oninput="calcEPS()">
+          <span class="eps-unit">events</span>
+        </div>
+        <div class="eps-row">
+          <span class="eps-lbl">IDS/IPS alerts/day</span>
+          <input class="eps-input" id="eps-ids" type="number" value="50000" oninput="calcEPS()">
+          <span class="eps-unit">events</span>
+        </div>
+        <div class="eps-row">
+          <span class="eps-lbl">Web Server logs/day</span>
+          <input class="eps-input" id="eps-web" type="number" value="300000" oninput="calcEPS()">
+          <span class="eps-unit">events</span>
+        </div>
+        <div class="eps-row">
+          <span class="eps-lbl">Peak hour multiplier</span>
+          <input class="eps-input" id="eps-peak" type="number" value="3" step="0.5" oninput="calcEPS()">
+          <span class="eps-unit">x factor</span>
+        </div>
+        <div class="eps-result">
+          <div class="r-val" id="eps-val" style="color:var(--blue2)">0</div>
+          <div class="r-lbl">Average EPS (Events Per Second)</div>
+        </div>
+        <div class="eps-result">
+          <div class="r-val" id="eps-peak-val" style="color:var(--orange)">0</div>
+          <div class="r-lbl">Peak EPS (after multiplier)</div>
+        </div>
+        <div class="eps-result">
+          <div class="r-val" id="eps-storage" style="color:var(--green)">0</div>
+          <div class="r-lbl">Est. Daily Storage (avg 300 bytes/event)</div>
+        </div>
+        <div class="eps-result">
+          <div class="r-val" id="eps-tier" style="color:var(--yellow)">—</div>
+          <div class="r-lbl">Recommended SIEM Tier</div>
+        </div>
+      </div>
+    </div>
+    <div>
+      <div class="sizing-card" style="margin-bottom:12px">
+        <div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:10px">Hardware Requirements by Tier</div>
+        <table class="hw-table">
+          <thead><tr><th>Component</th><th style="color:var(--blue2)">Mid-Range</th><th style="color:var(--green)">High-Range</th></tr></thead>
+          <tbody>
+            <tr><td>Architecture</td><td class="hw-mid">Intel 64-bit</td><td class="hw-high">Intel 64-bit</td></tr>
+            <tr><td>CPU Cores</td><td class="hw-mid">24 cores @ 2GHz</td><td class="hw-high">48 cores @ 2GHz</td></tr>
+            <tr><td>RAM</td><td class="hw-mid">64 GB DDR4</td><td class="hw-high">128 GB DDR4</td></tr>
+            <tr><td>Disk IOPS</td><td class="hw-mid">800 avg IOPS</td><td class="hw-high">1200 avg IOPS</td></tr>
+            <tr><td>Storage Type</td><td class="hw-mid">RAID HDD</td><td class="hw-high">SSD for hot tier</td></tr>
+            <tr><td>NIC</td><td class="hw-mid">1 GB Ethernet</td><td class="hw-high">1 GB + Mgmt NIC</td></tr>
+            <tr><td>OS</td><td class="hw-mid">64-bit Linux</td><td class="hw-high">64-bit Linux</td></tr>
+            <tr><td>EPS Range</td><td class="hw-mid">Up to 5,000 EPS</td><td class="hw-high">5,000 – 25,000+ EPS</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="sizing-card">
+        <div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:8px">Secondary Requirements Checklist</div>
+        <div id="req-checklist"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ DEPLOYMENT ARCHITECTURES ═══ -->
+<div class="pg" id="pg-arch">
+  <div style="padding:10px 12px;border-bottom:1px solid var(--border);background:var(--panel2);flex-shrink:0;font-size:11px;color:var(--text2)">
+    Choice of SIEM deployment architecture is affected by: number of log sources, data volume, collection mechanisms, use cases, network topology, available bandwidth, and regulatory compliance requirements.
+  </div>
+  <div class="arch-layout" id="arch-grid"></div>
+</div>
+
+</div><!-- /pages -->
+</div><!-- /content -->
+</div><!-- /app -->
+
+<script>
+// ── SAFETY ────────────────────────────────────────────────────────────────────
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
+
+// ── CLOCK ─────────────────────────────────────────────────────────────────────
+setInterval(()=>document.getElementById('topclk').textContent=new Date().toLocaleTimeString('en-GB')+' UTC',1000);
+
+// ── NAV ───────────────────────────────────────────────────────────────────────
+function swPage(id,el){
+  document.querySelectorAll('.pg').forEach(p=>p.classList.remove('on'));
+  document.querySelectorAll('.sb-it').forEach(i=>i.classList.remove('on'));
+  document.getElementById('pg-'+id).classList.add('on');
+  if(el) el.classList.add('on');
+  const lb={'overview':'Dashboard','alerts':'Active Alerts','logview':'Log Viewer',
+    'netflow':'NetFlow Monitor','detengine':'Detection Engine','detection':'Sig vs Anomaly',
+    'contextdata':'Contextual Data','sizing':'EPS Sizing Tool','arch':'Deployment Architectures'};
+  document.getElementById('ptab-label').textContent=lb[id]||id;
+  if(id==='detengine') buildDetEngine();
+  if(id==='netflow') generateNetflow();
+}
+
+// ── DATA ──────────────────────────────────────────────────────────────────────
+const HOSTS=['WS-FINANCE-01','WS-HR-03','SRV-DC-01','SRV-FILE-01','WS-DEV-05','SRV-WEB-01'];
+const IPS_EXT=['185.220.101.5','45.142.212.100','185.234.218.48','91.108.4.1','203.0.113.55'];
+const IPS_INT=['192.168.1.15','192.168.1.22','192.168.1.5','192.168.1.10','192.168.1.31'];
+const USERS=['jsmith','mwilson','dchen','SYSTEM','rzhan','www-data'];
+function rnd(a,b){return Math.floor(Math.random()*(b-a+1))+a;}
+function pick(a){return a[rnd(0,a.length-1)];}
+function ts(){return new Date().toISOString().replace('T',' ').slice(0,19);}
+
+const LOG_TPLS=[
+  {src:'Windows Security',eid:'4625',sev:'HIGH',   msg:()=>'Failed logon: '+pick(USERS)+' from '+pick(IPS_INT)+' Type:3 Status:0xC000006A'},
+  {src:'Windows Security',eid:'4624',sev:'INFO',   msg:()=>'Successful logon: '+pick(USERS)+' from '+pick(IPS_INT)+' Type:3'},
+  {src:'Windows Security',eid:'4688',sev:'MEDIUM', msg:()=>'Process: powershell.exe -EncodedCommand Parent:'+pick(['winword.exe','excel.exe'])+' User:'+pick(USERS)},
+  {src:'Windows Security',eid:'4732',sev:'CRITICAL',msg:()=>'Admin group changed: '+pick(USERS)+' added to Administrators by '+pick(USERS)},
+  {src:'Windows Security',eid:'1102',sev:'CRITICAL',msg:()=>'Security audit log CLEARED by: '+pick(USERS)+' LogonID:0x'+rnd(10000,99999).toString(16).toUpperCase()},
+  {src:'Windows System',  eid:'7045',sev:'HIGH',   msg:()=>'New service: '+pick(['WinSvc32','SvcHlp64'])+' Path:C:\\Windows\\Temp\\'+pick(['svc.exe','update.exe'])},
+  {src:'Web Server',      eid:'HTTP',sev:'CRITICAL',msg:()=>pick(IPS_EXT)+' GET /login.php?id=1 UNION SELECT null,username,password FROM users-- HTTP/1.1 200'},
+  {src:'Web Server',      eid:'HTTP',sev:'HIGH',   msg:()=>pick(IPS_EXT)+' GET /search?q='+pick(['[script]alert(1)[/script]','%3Cscript%3Ealert%281%29%3C%2Fscript%3E'])+' HTTP/1.1 403'},
+  {src:'Web Server',      eid:'HTTP',sev:'HIGH',   msg:()=>pick(IPS_EXT)+' GET /download?file=../../../../etc/passwd HTTP/1.1 403'},
+  {src:'Web Server',      eid:'HTTP',sev:'HIGH',   msg:()=>pick(IPS_EXT)+' POST /login.php HTTP/1.1 401 — '+rnd(10,80)+' failed attempts in 60s'},
+  {src:'Web Server',      eid:'HTTP',sev:'MEDIUM', msg:()=>pick(IPS_EXT)+' GET /'+pick(['banking/transfer.jsp?id=','banking/view/transfer.jsp?id='])+rnd(10000,99999)+' HTTP/1.1 '+pick([200,500,404])},
+  {src:'IDS/IPS',         eid:'IDS', sev:'CRITICAL',msg:()=>'ALERT: '+pick(['ET MALWARE Meterpreter','SQL_INJECTION_ATTEMPT','XSS_REFLECTED','DIR_TRAVERSAL_ATTEMPT','BOT_USERAGENT_NIKTO'])+' SRC:'+pick(IPS_EXT)+' SIG:'+rnd(1000000,9999999)},
+  {src:'Firewall',        eid:'FW',  sev:'HIGH',   msg:()=>'DENY TCP '+pick(IPS_EXT)+':'+rnd(40000,60000)+' -> '+pick(IPS_INT)+':'+pick([22,445,3389,4444])},
+  {src:'Linux Auth',      eid:'sshd',sev:'HIGH',   msg:()=>'Failed password for '+pick(USERS)+' from '+pick(IPS_EXT)+' port '+rnd(40000,60000)+' ssh2'},
+];
+
+let LOGS=[];
+let CNT={total:0,critical:0,high:0,medium:0,info:0,win:0,linux:0,fw:0,web:0,ids:0};
+let selLogId=null;
+let activeSev='ALL';
+let activeSrc='ALL';
+let lfText='';
+
+function mkLog(){
+  const t=pick(LOG_TPLS);
+  const log={id:Date.now()+Math.random(),ts:ts(),src:t.src,eid:t.eid,sev:t.sev,
+    host:pick(HOSTS),msg:t.msg(),user:pick(USERS),srcip:rnd(0,2)>1?pick(IPS_INT):pick(IPS_EXT)};
+  LOGS.unshift(log);if(LOGS.length>300) LOGS.pop();
+  CNT.total++;
+  if(log.sev==='CRITICAL') CNT.critical++;
+  else if(log.sev==='HIGH') CNT.high++;
+  else if(log.sev==='MEDIUM') CNT.medium++;
+  else CNT.info++;
+  if(log.src.startsWith('Windows')) CNT.win++;
+  else if(log.src==='Linux Auth') CNT.linux++;
+  else if(log.src==='Firewall') CNT.fw++;
+  else if(log.src==='Web Server') CNT.web++;
+  else if(log.src==='IDS/IPS') CNT.ids++;
+  return log;
+}
+
+function seed(){for(let i=0;i<90;i++) mkLog();}
+
+// ── DASHBOARD ─────────────────────────────────────────────────────────────────
+function renderDashboard(){
+  const stats=[
+    {v:CNT.total,l:'Total Events',c:'var(--blue2)',t:'+'+rnd(3,9)+'% vs prev hour'},
+    {v:CNT.critical,l:'Critical',c:'var(--red)',t:rnd(1,4)+' new',tc:'trend-up'},
+    {v:CNT.high,l:'High Severity',c:'var(--orange)',t:'Investigating'},
+    {v:CNT.win,l:'Windows Events',c:'#0078d4',t:'5 agents'},
+    {v:CNT.web,l:'Web App Events',c:'var(--purple)',t:rnd(2,8)+' attack types'},
+    {v:LOGS.filter(l=>l.sev==='CRITICAL').slice(0,5).length,l:'Active Incidents',c:'var(--red)',t:'Triage needed'},
+  ];
+  document.getElementById('stat-row').innerHTML=stats.map(s=>`
+    <div class="stat-m">
+      <div class="sv" style="color:${s.c}">${s.v}</div>
+      <div class="sk">${esc(s.l)}</div>
+      <div style="font-size:9px;margin-top:3px;color:${s.tc?'var(--red)':'var(--green)'}">${esc(s.t)}</div>
+    </div>`).join('');
+
+  const rates=[
+    {l:'Windows Security',v:CNT.win,c:'#3b82f6'},
+    {l:'Web Server Logs',v:CNT.web,c:'#8b5cf6'},
+    {l:'IDS/IPS Alerts',v:CNT.ids,c:'#ef4444'},
+    {l:'Firewall Events',v:CNT.fw,c:'#06b6d4'},
+    {l:'Linux Auth',v:CNT.linux,c:'#f97316'},
+  ];
+  const mx=Math.max(...rates.map(r=>r.v))||1;
+  document.getElementById('rate-bars').innerHTML=rates.map(r=>`
+    <div class="rb-row">
+      <span class="rb-lbl">${esc(r.l)}</span>
+      <div class="rb-track"><div class="rb-fill" style="width:${r.v/mx*100}%;background:${r.c}"></div></div>
+      <span class="rb-num">${r.v}</span>
+    </div>`).join('');
+  document.getElementById('ev-total-b').textContent=CNT.total+' events';
+
+  const types=[
+    {n:'SQL Injection Attempts',cnt:LOGS.filter(l=>l.msg.toLowerCase().includes('union select')||l.msg.toLowerCase().includes('1 union')).length,c:'#f43f5e'},
+    {n:'XSS Attack Attempts',cnt:LOGS.filter(l=>l.msg.toLowerCase().includes('script')||l.msg.toLowerCase().includes('%3c')).length,c:'#f97316'},
+    {n:'Directory Traversal',cnt:LOGS.filter(l=>l.msg.includes('../../../../')||l.msg.includes('etc/passwd')).length,c:'#fbbf24'},
+    {n:'Brute Force Logins',cnt:LOGS.filter(l=>['4625','sshd'].includes(l.eid)).length,c:'#8b5cf6'},
+    {n:'Auth Log Cleared',cnt:LOGS.filter(l=>l.eid==='1102').length,c:'#ef4444'},
+    {n:'IDS Signatures',cnt:CNT.ids,c:'#06b6d4'},
+    {n:'Admin Group Changed',cnt:LOGS.filter(l=>l.eid==='4732').length,c:'#ec4899'},
+  ];
+  const tot=types.reduce((a,b)=>a+b.cnt,0)||1;
+  document.getElementById('evt-dist').innerHTML=types.map(t=>`
+    <div class="ed-row">
+      <span class="ed-dot" style="background:${t.c}"></span>
+      <span class="ed-name">${esc(t.n)}</span>
+      <span class="ed-cnt">${t.cnt}</span>
+      <span class="ed-pct">${Math.round(t.cnt/tot*100)}%</span>
+    </div>`).join('');
+
+  // Recent alerts
+  const rec=LOGS.filter(l=>l.sev==='CRITICAL'||l.sev==='HIGH').slice(0,7);
+  document.getElementById('rec-b').textContent=rec.length;
+  const re=document.getElementById('rec-events');re.innerHTML='';
+  rec.forEach(log=>{
+    const row=document.createElement('div');
+    row.style.cssText='display:flex;align-items:center;gap:8px;padding:6px 12px;border-bottom:1px solid rgba(30,45,69,.4);cursor:pointer;transition:background .08s;font-size:11px;';
+    row.addEventListener('mouseover',()=>row.style.background='rgba(255,255,255,.02)');
+    row.addEventListener('mouseout',()=>row.style.background='');
+    row.addEventListener('click',()=>{swPage('logview',null);setTimeout(()=>showDP(log.id),80);});
+    row.innerHTML=`<span class="sb2 ${esc(log.sev)}">${esc(log.sev)}</span>
+      <span style="color:var(--text3);font-family:var(--mono);min-width:60px">${esc(log.ts.slice(11))}</span>
+      <span style="color:var(--cyan);min-width:80px">${esc(log.host)}</span>
+      <span style="color:var(--purple);min-width:50px">EID:${esc(log.eid)}</span>
+      <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text2)">${esc(log.msg)}</span>`;
+    re.appendChild(row);
+  });
+
+  // Rule status widget
+  const rules=DETECTION_RULES;
+  const active=rules.filter(r=>r.status==='active').length;
+  document.getElementById('rule-status-widget').innerHTML=rules.map(r=>`
+    <div style="display:flex;align-items:center;gap:6px;padding:4px 0;border-bottom:1px solid rgba(30,45,69,.4);font-size:10px">
+      <span style="width:6px;height:6px;border-radius:50%;background:${r.status==='active'?'var(--green)':r.status==='tuning'?'var(--yellow)':'var(--text3)'};flex-shrink:0"></span>
+      <span style="flex:1">${esc(r.name)}</span>
+      <span style="font-size:9px;color:${r.status==='active'?'var(--green)':r.status==='tuning'?'var(--yellow)':'var(--text3)'}">${esc(r.status.toUpperCase())}</span>
+    </div>`).join('');
+
+  // Update badges
+  document.getElementById('sbb-alerts').textContent=CNT.critical;
+  document.getElementById('sbb-logs').textContent=CNT.total;
+  document.getElementById('sbb-rules').textContent=active;
+  document.getElementById('active-rule-count').textContent=active+' active';
+  document.getElementById('ssb-win').textContent=CNT.win;
+  document.getElementById('ssb-linux').textContent=CNT.linux;
+  document.getElementById('ssb-fw').textContent=CNT.fw;
+  document.getElementById('ssb-web').textContent=CNT.web;
+  document.getElementById('ssb-ids').textContent=CNT.ids;
+  document.getElementById('refresh-lbl').textContent=new Date().toLocaleTimeString('en-GB');
+}
+
+// ── ALERTS PAGE ───────────────────────────────────────────────────────────────
+function renderAlerts(){
+  const crits=LOGS.filter(l=>l.sev==='CRITICAL'||l.sev==='HIGH').slice(0,20);
+  const el=document.getElementById('alerts-body');el.innerHTML='';
+  crits.forEach(log=>{
+    const div=document.createElement('div');
+    div.style.cssText='background:var(--panel);border:1px solid var(--border);border-radius:7px;padding:12px;margin-bottom:10px;cursor:pointer;transition:border-color .15s;';
+    div.addEventListener('mouseover',()=>div.style.borderColor='var(--blue)');
+    div.addEventListener('mouseout',()=>div.style.borderColor='var(--border)');
+    div.addEventListener('click',()=>{swPage('logview',null);setTimeout(()=>showDP(log.id),80);});
+    const sc={CRITICAL:'var(--red)',HIGH:'var(--orange)'}[log.sev]||'var(--yellow)';
+    div.innerHTML=`<div style="display:flex;align-items:flex-start;gap:10px">
+      <span class="sb2 ${esc(log.sev)}" style="font-size:10px">${esc(log.sev)}</span>
+      <div style="flex:1">
+        <div style="font-size:12px;font-weight:600;color:${sc};margin-bottom:4px">EID ${esc(log.eid)} — ${esc(log.src)}</div>
+        <div style="font-size:11px;color:var(--text2);margin-bottom:5px">${esc(log.msg)}</div>
+        <div style="display:flex;gap:12px;font-size:10px;color:var(--text3)">
+          <span>&#128187; ${esc(log.host)}</span><span>&#128336; ${esc(log.ts)}</span><span style="color:var(--purple)">EventID: ${esc(log.eid)}</span>
+        </div>
+      </div>
+      <button class="tb-btn" style="flex-shrink:0;font-size:10px" onclick="event.stopPropagation();this.textContent='&#10003; Acked';this.style.color='var(--green)'">Acknowledge</button>
+    </div>`;
+    el.appendChild(div);
+  });
+}
+
+// ── LOG VIEWER ─────────────────────────────────────────────────────────────────
+const SRC_LIST=['All Sources','Windows Security','Windows System','Linux Auth','Firewall','IDS/IPS','Web Server'];
+function buildLvSources(){
+  const el=document.getElementById('lv-src-list');el.innerHTML='';
+  SRC_LIST.forEach((s,i)=>{
+    const div=document.createElement('div');
+    div.className='lv-src'+(i===0?' on':'');
+    const colors=['var(--text3)','var(--green)','#0078d4','var(--orange)','var(--cyan)','var(--purple)','var(--red)'];
+    const cnt=i===0?CNT.total:LOGS.filter(l=>l.src===s).length;
+    div.innerHTML=`<span class="lv-sdot" style="background:${colors[i]}"></span><span>${esc(s)}</span><span class="lv-scnt">${cnt}</span>`;
+    div.addEventListener('click',()=>{
+      document.querySelectorAll('.lv-src').forEach(x=>x.classList.remove('on'));
+      div.classList.add('on');activeSrc=s==='All Sources'?'ALL':s;renderLogTable();
+    });
+    el.appendChild(div);
+  });
+}
+
+function filterLogs(){lfText=document.getElementById('log-filter').value.toLowerCase();renderLogTable();}
+function setSev(sev,btn){
+  activeSev=sev;
+  document.querySelectorAll('.sf-btn').forEach(b=>b.classList.remove('on'));
+  btn.classList.add('on');renderLogTable();
+}
+
+const GUIDANCE={
+  '4625':'Brute force indicator. Alert: >5 failures from same source in 60s. Check status code (0xC000006A=wrong pw, 0xC0000064=user not found). Correlate with 4624 success event.',
+  '4624':'Successful logon. Baseline normal. Alert on after-hours, new source IPs, or admin accounts from workstations.',
+  '4688':'Process created. Enable cmdline logging. Alert: Office/browser spawning cmd/powershell. Check parent process.',
+  '4732':'Admin group changed — IMMEDIATE P1. Verify against change ticket. Disable account if unauthorized.',
+  '1102':'Security log CLEARED — IMMEDIATE P1. Attacker covering tracks. SIEM centralized log unaffected. Who cleared it is logged in this event.',
+  '7045':'New service installed. Alert: binary in Temp/AppData. Random name. Created by non-admin.',
+  'HTTP':'Web attack pattern. SQLi, XSS, traversal, brute force, parameter tampering. Check WAF logs. Block source IP.',
+  'IDS':'IDS signature match. Correlate with endpoint and network flow. Check for false positive before escalating.',
+  'FW':'Firewall event. High-risk ports from external. Check deny rate, geolocation, threat intel feed.',
+  'sshd':'SSH failure from external. Alert >10 in 60s. Success after failures = confirmed brute force.',
+};
+
+function renderLogTable(){
+  let logs=LOGS;
+  if(activeSrc!=='ALL') logs=logs.filter(l=>l.src===activeSrc);
+  if(activeSev!=='ALL') logs=logs.filter(l=>l.sev===activeSev);
+  if(lfText){const f=lfText;logs=logs.filter(l=>l.msg.toLowerCase().includes(f)||l.host.toLowerCase().includes(f)||l.eid.toLowerCase().includes(f)||l.sev.toLowerCase().includes(f)||l.srcip.toLowerCase().includes(f));}
+  document.getElementById('log-cnt').textContent=logs.length+' events';
+  const tbody=document.getElementById('log-tbody');tbody.innerHTML='';
+  logs.slice(0,200).forEach(log=>{
+    const tr=document.createElement('tr');
+    if(log.id===selLogId) tr.className='sel';
+    tr.addEventListener('click',()=>showDP(log.id));
+    const msgTd=document.createElement('td');
+    msgTd.style.cssText='color:var(--text2);max-width:380px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;';
+    msgTd.textContent=log.msg;
+    tr.innerHTML=`<td style="color:var(--text3);white-space:nowrap">${esc(log.ts)}</td>
+      <td><span class="sb2 ${esc(log.sev)}">${esc(log.sev)}</span></td>
+      <td style="color:var(--purple)">${esc(log.eid)}</td>
+      <td style="color:var(--cyan)">${esc(log.host)}</td>
+      <td style="font-size:10px;color:var(--text3)">${esc(log.src)}</td>`;
+    tr.appendChild(msgTd);tbody.appendChild(tr);
+  });
+}
+
+function showDP(id){
+  selLogId=id;const log=LOGS.find(l=>l.id===id);if(!log) return;
+  renderLogTable();
+  const sc={CRITICAL:'var(--red)',HIGH:'var(--orange)',MEDIUM:'var(--yellow)',INFO:'var(--green)'}[log.sev]||'var(--text2)';
+  const g=GUIDANCE[log.eid]||'Review in context. Correlate across sources.';
+  const rows=[['Timestamp',log.ts],['Severity',log.sev],['Event ID',log.eid],['Host',log.host],['Source',log.src],['User',log.user],['Src IP',log.srcip]];
+  document.getElementById('dp-body').innerHTML=
+    rows.map(([k,v])=>`<div class="dp-row"><span class="dp-k">${esc(k)}</span><span class="dp-v" style="${k==='Severity'?'color:'+sc:''}">${esc(v)}</span></div>`).join('')
+    +`<div style="font-size:9px;color:var(--text3);margin:8px 0 4px;text-transform:uppercase;letter-spacing:.5px">Raw Log</div>`
+    +`<div class="rawbox">${esc(log.ts+'\n'+log.host+' '+log.src+'\nEID:'+log.eid+' Sev:'+log.sev+'\nUser:'+log.user+' SrcIP:'+log.srcip+'\n\n'+log.msg)}</div>`
+    +`<div style="font-size:9px;color:var(--text3);margin:8px 0 4px;text-transform:uppercase;letter-spacing:.5px">SOC Guidance</div>`
+    +`<div class="guidance">${esc(g)}</div>`;
+}
+function clearDP(){selLogId=null;document.getElementById('dp-body').innerHTML='<div style="color:var(--text3);text-align:center;padding:28px;font-size:11px">Select a log entry to inspect</div>';}
+
+// ── NETFLOW ───────────────────────────────────────────────────────────────────
+let NF_FLOWS=[];
+function generateNetflow(){
+  NF_FLOWS=[];
+  let anomalyCount=0;
+  for(let i=0;i<40;i++){
+    const isAnom=Math.random()<0.25;
+    const proto=pick(['TCP','TCP','TCP','UDP','ICMP']);
+    const dstPort=isAnom?pick([4444,1337,31337,4321,9999]):pick([80,443,53,22,445,3389,8080]);
+    const bytes=isAnom?rnd(500000,5000000):rnd(200,50000);
+    const flag=isAnom?'ANOMALY':bytes>100000?'SUSPECT':'NORMAL';
+    if(flag==='ANOMALY') anomalyCount++;
+    NF_FLOWS.push({ts:ts(),src:pick(IPS_INT),srcP:rnd(40000,60000),
+      dst:isAnom?pick(IPS_EXT):pick(IPS_INT),dstP:dstPort,
+      proto,bytes,flag,isAnom});
+  }
+  document.getElementById('nf-anomaly-count').textContent=anomalyCount+' anomalies';
+  const feed=document.getElementById('nf-feed');feed.innerHTML='';
+  NF_FLOWS.forEach((f,i)=>{
+    const row=document.createElement('div');
+    row.className='nf-row'+(f.isAnom?' anomaly':'');
+    const protoC={TCP:'proto-TCP',UDP:'proto-UDP',ICMP:'proto-ICMP'}[f.proto]||'proto-TCP';
+    const flagC={NORMAL:'fl-normal',SUSPECT:'fl-suspect',ANOMALY:'fl-anomaly'}[f.flag];
+    row.innerHTML=`<span style="color:var(--text3)">${esc(f.ts.slice(11))}</span>
+      <span style="color:var(--cyan)">${esc(f.src)}</span>
+      <span style="color:var(--text3)">${f.srcP}</span>
+      <span style="color:${f.isAnom?'var(--red)':'var(--text2)'}">${esc(f.dst)}</span>
+      <span style="color:${f.isAnom?'var(--red)':'var(--purple)'}">:${f.dstP}</span>
+      <span class="nf-proto ${protoC}">${f.proto}</span>
+      <span style="color:${f.bytes>100000?'var(--orange)':'var(--text3)'}">${(f.bytes/1024).toFixed(1)}KB</span>
+      <span class="nf-flag ${flagC}">${esc(f.flag)}</span>`;
+    row.addEventListener('click',()=>{
+      if(f.isAnom) document.getElementById('nf-anomaly-panel').innerHTML=`
+        <div style="background:rgba(244,63,94,.08);border:1px solid rgba(244,63,94,.25);border-radius:5px;padding:10px;font-size:10px;line-height:1.7">
+          <strong style="color:var(--red)">&#9888; ANOMALY DETECTED</strong><br>
+          Source: <span style="color:var(--cyan)">${esc(f.src)}:${f.srcP}</span><br>
+          Destination: <span style="color:var(--red)">${esc(f.dst)}:${f.dstP}</span><br>
+          Protocol: ${f.proto} | Volume: ${(f.bytes/1024).toFixed(1)} KB<br>
+          <strong>Why flagged:</strong> Destination port ${f.dstP} is a known C2/malware port. Volume ${(f.bytes/1024/1024).toFixed(2)} MB suggests data exfiltration.<br>
+          <strong style="color:var(--red)">Action:</strong> Block connection at firewall. Investigate ${esc(f.src)} for malware. Check full session for payload.
+        </div>`;
+    });
+    feed.appendChild(row);
+  });
+  const protos={TCP:0,UDP:0,ICMP:0};
+  NF_FLOWS.forEach(f=>protos[f.proto]=(protos[f.proto]||0)+1);
+  const tot=NF_FLOWS.length||1;
+  document.getElementById('nf-proto-dist').innerHTML=Object.entries(protos).map(([p,c])=>`
+    <div class="rb-row">
+      <span class="rb-lbl" style="color:var(--text2)">${p}</span>
+      <div class="rb-track"><div class="rb-fill" style="width:${c/tot*100}%;background:${{TCP:'var(--blue2)',UDP:'var(--orange)',ICMP:'var(--purple)'}[p]}"></div></div>
+      <span class="rb-num">${c}</span>
+    </div>`).join('');
+}
+
+// ── DETECTION RULES ───────────────────────────────────────────────────────────
+const DETECTION_RULES=[
+  {name:'SQL Injection Detection',category:'Web Attack',sev:'CRITICAL',status:'active',mitre:'T1190',
+   desc:'Detects SQL injection attempts in web server, IDS, and WAF logs. Uses regex pattern matching against known SQL injection signatures including union-based, error-based, time-based blind, and MSSQL-specific patterns.',
+   logic:`RULE: SQLi_Detection
+WHEN:
+  source IN [web_server_logs, WAF_logs, IDS_logs]
+  uri_query MATCHES any regex below
+  OR http_body MATCHES any regex below
+THEN:
+  severity = CRITICAL
+  alert = "SQL Injection Attempt from {src_ip}"`,
+   regex:`# Detect SQL meta-characters
+/(\\%27)|(\\')|(\\-\\-)|(\\%23)|(#)/ix
+
+# Detect error-based SQLi
+/((\\%3D)|(=))[^\\n]*((\\%27)|(\\')|(\\-\\-)|(\\%3B)|(;))/i
+
+# Detect UNION-based extraction
+/((\\%27)|(\\'))union/ix
+/((\\%27)|(\\'))(select|union|insert|update|delete|drop)/ix
+
+# Detect tautology (OR 1=1)
+/\\w*((\\%27)|(\\'))((\\%6F)|o|(\\%4F))((\\%72)|r|(\\%52))/ix
+
+# Detect MSSQL xp_cmdshell RCE
+/exec(\\s|\\+)+(s|x)p\\w+/ix`,
+   sources:['IIS/Apache Web Server Logs','WAF Logs (ModSecurity, Cloudflare)','IDS Logs (Snort/Suricata)'],
+   playbook:[
+     {t:'atk',txt:'SQLi pattern detected in web request URI or POST body'},
+     {t:'inv',txt:'Confirm attack: review full HTTP request in WAF logs for payload clarity'},
+     {t:'def',txt:'Block source IP at perimeter firewall and WAF'},
+     {t:'inv',txt:'Check target database for signs of data extraction (unusual query volume)'},
+     {t:'def',txt:'If database compromise suspected: isolate, engage DBA for audit'},
+     {t:'inv',txt:'Review all requests from same IP for prior reconnaissance (404/403 patterns)'},
+   ]},
+  {name:'XSS Attack Detection',category:'Web Attack',sev:'HIGH',status:'active',mitre:'T1059.007',
+   desc:'Detects Cross-Site Scripting attempts using regex matching on HTML tags, JavaScript event handlers, and encoded variants. Covers reflected, stored, and DOM-based XSS patterns.',
+   logic:`RULE: XSS_Detection
+WHEN:
+  source IN [web_server_logs, WAF_logs]
+  request_uri MATCHES xss_regex
+  OR request_body MATCHES xss_regex
+THEN:
+  severity = HIGH
+  alert = "XSS Attempt: {src_ip} -> {uri}"`,
+   regex:`# Simple XSS with angle brackets
+/((\\%3C)|<)((\\%2F)|\\/)*[a-z0-9\\%]+((\\%3E)|>)/ix
+
+# IMG tag onerror XSS
+/((\\%3C)|<)((\\%69)|i|(\\%49))((\\%6D)|m|(\\%4D))((\\%67)|g|(\\%47))[^\\n]+((\\%3E)|>)/i
+
+# HTML/JavaScript injection tags
+/(javascript|vbscript|expression|applet|script|embed|object|iframe|frame)/i
+
+# Paranoid catch-all for all tags
+/((\\%3C)|<)[^\\n]+((\\%3E)|>)/i`,
+   sources:['IIS/Apache Web Server Logs','WAF Logs','IDS Logs'],
+   playbook:[
+     {t:'atk',txt:'XSS payload detected in request parameter or form field'},
+     {t:'inv',txt:'Determine if reflected or stored XSS: check if payload appears in response'},
+     {t:'def',txt:'Block request at WAF. Add XSS signature to WAF rule set'},
+     {t:'inv',txt:'If stored XSS: identify database table where payload was stored'},
+     {t:'def',txt:'Remove stored payload from database. Notify affected users to re-authenticate'},
+   ]},
+  {name:'Directory Traversal Detection',category:'Web Attack',sev:'HIGH',status:'active',mitre:'T1083',
+   desc:'Detects path traversal attempts in file download parameters. Matches dot-dot-slash sequences, URL-encoded variants, and access to known sensitive files.',
+   logic:`RULE: DirTraversal_Detection
+WHEN:
+  source IN [web_server_logs, WAF_logs, IDS_logs]
+  request_uri MATCHES traversal_regex
+THEN:
+  severity = HIGH
+  alert = "Path Traversal: {src_ip} {uri}"`,
+   regex:`# Core traversal pattern (dot-dot-slash + encoded)
+/(\\.|(%|%25)2E)(\\.|(%|%25)2E)(\\/|(%|%25)2F|\\\\|(%|%25)5C)/i
+
+# Direct sensitive file access
+/\/etc\/passwd/i
+/\/etc\/shadow/i
+/\/windows\/win\.ini/i
+/\/.ssh\/id_rsa/i
+
+# Null byte bypass attempts
+/\\.\\.\\/.*\\%00/i`,
+   sources:['IIS/Apache Web Server Logs','WAF Logs','IDS Logs'],
+   playbook:[
+     {t:'atk',txt:'Directory traversal sequence found in file download parameter'},
+     {t:'inv',txt:'Determine what file was requested — if /etc/passwd or /etc/shadow: P1'},
+     {t:'def',txt:'Block source IP. Add traversal pattern to WAF rules'},
+     {t:'inv',txt:'Check web server access log for successful 200 response — was file served?'},
+     {t:'def',txt:'If file was served: treat as data breach. Review what was exposed'},
+   ]},
+  {name:'Brute Force Login Detection',category:'Authentication',sev:'CRITICAL',status:'active',mitre:'T1110',
+   desc:'Detects brute force and password spray attacks against web applications and system login portals. Monitors failed login frequency per source IP, and success-after-failure patterns.',
+   logic:`RULE: BruteForce_Detection
+WHEN:
+  EventID IN [4625, sshd_failure, HTTP_401]
+  Source_IP = same
+  Count >= 10
+  Timeframe = 60 seconds
+THEN: severity = CRITICAL
+
+ALSO:
+  Source_IP generates >10 failures
+  FOLLOWED BY success (4624, HTTP_200)
+  Within 5 minutes
+THEN: severity = CRITICAL
+  Alert = "Brute Force Success: credentials confirmed"
+
+Password Spray Pattern:
+  Same source IP
+  Different accounts (>=3)
+  Failures per account <= 2
+THEN: severity = CRITICAL (avoids lockout)`,
+   regex:`# Splunk filter: Source IPs with >10 invalid logins
+index=web_logs status IN (401, 403)
+| stats count BY src_ip
+| where count > 10
+
+# Failed then success (confirmed brute force)
+index=web_logs
+| transaction src_ip maxspan=5m
+| search status=401 AND status=200`,
+   sources:['Web Application Logs','Windows Security (4625)','Linux Auth (sshd)','WAF Logs'],
+   playbook:[
+     {t:'atk',txt:'Brute force threshold exceeded: >10 failures from single IP in 60s'},
+     {t:'inv',txt:'Check if any attempt succeeded — if yes: account is compromised'},
+     {t:'def',txt:'Block source IP at firewall and WAF immediately'},
+     {t:'def',txt:'Lock affected accounts pending password reset'},
+     {t:'inv',txt:'Check for distributed spray (same password, many accounts, many IPs)'},
+     {t:'def',txt:'Enable MFA if not already active. Review lockout policy threshold'},
+   ]},
+  {name:'Parameter Tampering Detection',category:'Web Attack',sev:'MEDIUM',status:'active',mitre:'T1565',
+   desc:'Detects URL and form parameter manipulation. Monitors for sequential ID enumeration (IDOR), negative price values, and repeated access patterns indicating automated parameter testing.',
+   logic:`RULE: ParamTamper_IDOR
+WHEN:
+  source = web_server_logs
+  URI matches /transfer.jsp?id=NNNN
+  Same source_ip requests sequential IDs
+  Pattern: id=N, id=N+1, id=N+2...
+THEN:
+  severity = MEDIUM
+  Alert = "IDOR enumeration: {src_ip} enumerating IDs"
+
+RULE: ParamTamper_PriceManip
+WHEN:
+  POST request contains price < 0
+  OR price != server_expected_price
+THEN:
+  severity = HIGH
+  Alert = "Price manipulation attempt"`,
+   regex:`# Sequential ID pattern in web logs
+10.x.x.x .* GET .*/transfer.jsp\\?id=\\d+.* (200|500)
+# Alternating 200/500 responses from same IP = IDOR
+
+# Negative price in POST body
+price=-[0-9]+
+discount=100
+coupon=ADMIN[A-Z0-9]+`,
+   sources:['Web Application Logs','IIS/Apache Access Logs'],
+   playbook:[
+     {t:'atk',txt:'Sequential parameter enumeration detected (IDOR pattern)'},
+     {t:'inv',txt:'Review what records were accessed — were they unauthorized?'},
+     {t:'def',txt:'Block source IP. Add rate limiting on parameterized endpoints'},
+     {t:'inv',txt:'Audit application for object-level authorization controls'},
+     {t:'def',txt:'Implement server-side validation for all price/discount/ID fields'},
+   ]},
+  {name:'Bad Bot / Scanner Detection',category:'Reconnaissance',sev:'MEDIUM',status:'tuning',mitre:'T1595',
+   desc:'Detects automated scanning tools, vulnerability scanners, and bad bots via User-Agent analysis and behavioral patterns (no static asset loading, rapid sequential requests).',
+   logic:`RULE: BadBot_Detection
+WHEN:
+  source = web_server_logs
+  User-Agent MATCHES known_scanner_patterns
+  OR (request_count_per_minute > 100 AND
+      static_assets_loaded = 0)
+THEN:
+  severity = MEDIUM
+  Alert = "Scanner/Bot detected: {user_agent} from {src_ip}"`,
+   regex:`# Known scanner User-Agents (Splunk)
+index=web_logs
+| regex cs_useragent="(?i)(sqlmap|nikto|nessus|openvas|masscan|nmap|dirbuster|gobuster|wfuzz|burpsuite|acunetix|appscan)"
+
+# Bots don't load CSS/JS assets
+index=web_logs
+| eval loads_assets=if(match(cs_uri_stem,"\\.(css|js|png|jpg|ico)"), 1, 0)
+| stats sum(loads_assets) AS asset_loads, count AS requests BY src_ip
+| where requests > 50 AND asset_loads = 0`,
+   sources:['Web Server Access Logs','WAF Logs','IDS Logs'],
+   playbook:[
+     {t:'atk',txt:'Automated scanner or bad bot identified via User-Agent or behavioral pattern'},
+     {t:'inv',txt:'Identify scanner type: vulnerability scanner or content scraper?'},
+     {t:'def',txt:'Block User-Agent string at WAF. Block source IP at firewall'},
+     {t:'inv',txt:'Review what endpoints were probed — check for successful discoveries'},
+     {t:'def',txt:'Implement CAPTCHA on high-value endpoints. Rate limit suspicious IPs'},
+   ]},
+];
+
+let activeRuleIdx=0;
+function buildDetEngine(){
+  const list=document.getElementById('rule-list');list.innerHTML='';
+  DETECTION_RULES.forEach((r,i)=>{
+    const div=document.createElement('div');
+    div.className='rule-item'+(i===0?' on':'');
+    div.addEventListener('click',()=>{
+      document.querySelectorAll('.rule-item').forEach(x=>x.classList.remove('on'));
+      div.classList.add('on');activeRuleIdx=i;showRule(r);
+    });
+    const sc={CRITICAL:'var(--red)',HIGH:'var(--orange)',MEDIUM:'var(--yellow)'}[r.sev]||'var(--dim)';
+    const stc={active:'rs-active',tuning:'rs-tuning',disabled:''}[r.status];
+    div.innerHTML=`<div class="ri-top">
+      <span class="sb2 ${esc(r.sev)}" style="font-size:9px">${esc(r.sev)}</span>
+      <span class="ri-name">${esc(r.name)}</span>
+      <span class="ri-status ${stc}">${esc(r.status.toUpperCase())}</span>
+    </div>
+    <div class="ri-meta"><span style="color:var(--purple)">${esc(r.mitre)}</span><span>${esc(r.category)}</span></div>`;
+    list.appendChild(div);
+  });
+  showRule(DETECTION_RULES[0]);
+}
+
+function showRule(r){
+  document.getElementById('rd-title').textContent=r.name;
+  document.getElementById('rd-actions').innerHTML=
+    `<button class="tb-btn" onclick="testRule()">&#128270; Test Rule</button>`
+    +`<button class="tb-btn accent" onclick="deployRule()">&#9654; Deploy</button>`;
+  const sc={CRITICAL:'var(--red)',HIGH:'var(--orange)',MEDIUM:'var(--yellow)'}[r.sev]||'var(--dim)';
+  const srcHtml=r.sources.map(s=>`<span style="font-size:9px;padding:2px 7px;background:rgba(59,130,246,.08);color:var(--blue2);border:1px solid rgba(59,130,246,.18);border-radius:3px;margin:2px;display:inline-block">${esc(s)}</span>`).join('');
+  const pbHtml=r.playbook.map((s,i)=>`
+    <div class="pb-step ${s.t}">
+      <div class="pb-num">${i+1}</div>
+      <div class="pb-txt">${esc(s.txt)}</div>
+    </div>`).join('');
+  document.getElementById('rule-detail').innerHTML=`
+    <div class="rd-h">
+      <div class="rd-title">${esc(r.name)}</div>
+      <div class="rd-badges">
+        <span class="bge" style="background:${sc}18;color:${sc};border:1px solid ${sc}40">${esc(r.sev)}</span>
+        <span class="bge bge-purple">${esc(r.mitre)}</span>
+        <span class="bge bge-dim">${esc(r.category)}</span>
+      </div>
+    </div>
+    <div style="font-size:11px;color:var(--text2);line-height:1.7;margin-bottom:10px">${esc(r.desc)}</div>
+    <div class="sec-title">Required Event Sources</div>
+    <div style="margin-bottom:10px">${srcHtml}</div>
+    <div class="sec-title">Correlation Logic (SIEM Rule)</div>
+    <div class="logic-box">${esc(r.logic)}</div>
+    <div class="sec-title">Detection Regex Patterns</div>
+    <div class="regex-box">${esc(r.regex)}</div>
+    <div class="sec-title">Incident Response Playbook</div>
+    <div class="playbook-steps">${pbHtml}</div>`;
+}
+
+function testRule(){
+  const r=DETECTION_RULES[activeRuleIdx];
+  const matches=LOGS.filter(l=>l.sev==='CRITICAL'||l.sev==='HIGH').slice(0,3);
+  alert('Rule Test: "'+r.name+'"\n\nMatched '+matches.length+' events in current log set.\nExample match: '+matches[0]?.msg?.slice(0,80)+'...');
+}
+function deployRule(){alert('Rule deployed to production SIEM.\nEstimated EPS impact: +'+rnd(5,50)+' EPS\nFalse positive rate: ~'+rnd(2,15)+'%\nMonitor for 24h before tuning.');}
+
+// ── CONTEXTUAL DATA ───────────────────────────────────────────────────────────
+const CTX_TYPES=[
+  {icon:'&#128101;',type:'User Context',source:'HR System / Identity Provider',color:'var(--blue2)',
+   desc:'Information about organization employees: new hires, departures, role changes, department. Critical for insider threat detection — knowing when a user has given notice elevates risk score.',
+   examples:['HR database exports','Active Directory attributes','Identity Provider (Okta, Azure AD)','Joiner/mover/leaver process']},
+  {icon:'&#128187;',type:'Asset Context',source:'CMDB / Asset Management',color:'var(--green)',
+   desc:'Information about network devices: routers, switches, servers, workstations, file lists, and device ownership. Enables SIEM to understand the criticality of an affected asset.',
+   examples:['CMDB (ServiceNow)','Network scanning tools','Asset discovery agents','Vulnerability scan data']},
+  {icon:'&#128737;',type:'Vulnerability Context',source:'Vulnerability Scanners',color:'var(--red)',
+   desc:'Known vulnerabilities on each asset. When combined with event data, allows SIEM to prioritize alerts where the targeted asset has known-exploitable CVEs.',
+   examples:['Tenable Nessus','Qualys','Rapid7 InsightVM','OpenVAS']},
+  {icon:'&#128268;',type:'Threat Context',source:'Threat Intelligence Feeds',color:'var(--orange)',
+   desc:'External information about known threat actors, malicious IPs, malware hashes, and attack campaigns. Enables automatic enrichment of events with threat intelligence reputation scores.',
+   examples:['CrowdStrike Falcon Intel','Recorded Future','AlienVault OTX','MISP feeds']},
+  {icon:'&#9881;',type:'Configuration Context',source:'Vulnerability Assessment Tools',color:'var(--purple)',
+   desc:'Device configuration details and security posture: firewall rules, patch levels, security policy compliance. Configuration drift can indicate unauthorized changes.',
+   examples:['Tenable.io','CIS-CAT','Configuration management DB','Patch management tools']},
+  {icon:'&#128274;',type:'Data Context',source:'DLP Tools',color:'var(--teal)',
+   desc:'Data sensitivity classification and data loss prevention events. When SIEM knows which files are classified as sensitive, it can prioritize access events to those files.',
+   examples:['Symantec DLP','McAfee DLP','Microsoft Purview','File classification tools']},
+  {icon:'&#127758;',type:'External Context',source:'Third-Party Intel Feeds',color:'var(--indigo)',
+   desc:'Threat intelligence from external sources including ISAC feeds, government alerts, commercial threat intel vendors, and OSINT. Broadens threat detection beyond internal data.',
+   examples:['FS-ISAC / H-ISAC feeds','CISA advisories','Shodan internet exposure','Commercial threat intel APIs']},
+  {icon:'&#127760;',type:'Application Context',source:'DAST / SAST Tools',color:'var(--pink)',
+   desc:'Security testing results for applications running in the network. DAST (dynamic) and SAST (static) results help SIEM correlate web attack events with known vulnerabilities in those applications.',
+   examples:['OWASP ZAP (DAST)','Checkmarx (SAST)','Veracode','Burp Suite Enterprise']},
+  {icon:'&#128200;',type:'Business Context',source:'Business Applications',color:'var(--yellow)',
+   desc:'Business process context — what systems are used by which departments, business-hours definitions, critical business periods. Enables time-sensitive and department-scoped detections.',
+   examples:['ERP systems (SAP, Oracle)','CRM (Salesforce)','Business unit LDAP groups','Transaction monitoring systems']},
+  {icon:'&#128205;',type:'Location & Physical Context',source:'Physical Access Systems',color:'var(--cyan)',
+   desc:'GPS and physical access data: where a device or user physically is. Enables impossible-travel detection (same user logging in from two geographically separated locations simultaneously).',
+   examples:['Badge access systems','GPS-enabled devices','Network location by subnet','Cloud region tagging']},
+];
+function buildContextData(){
+  document.getElementById('ctx-grid').innerHTML=CTX_TYPES.map(c=>`
+    <div class="ctx-card">
+      <div class="ctx-icon">${c.icon}</div>
+      <div class="ctx-type" style="color:${c.color}">${esc(c.type)}</div>
+      <div class="ctx-source">Source: ${esc(c.source)}</div>
+      <div class="ctx-desc">${esc(c.desc)}</div>
+      <div class="ctx-examples">${c.examples.map(ex=>`<span class="ctx-ex">${esc(ex)}</span>`).join('')}</div>
+    </div>`).join('');
+}
+
+// ── EPS SIZING ────────────────────────────────────────────────────────────────
+function calcEPS(){
+  const fw=+document.getElementById('eps-fw').value||0;
+  const win=+document.getElementById('eps-win').value||0;
+  const linux=+document.getElementById('eps-linux').value||0;
+  const ids=+document.getElementById('eps-ids').value||0;
+  const web=+document.getElementById('eps-web').value||0;
+  const peak=+document.getElementById('eps-peak').value||1;
+  const totalPerDay=fw+win+linux+ids+web;
+  const avgEPS=totalPerDay/86400;
+  const peakEPS=avgEPS*peak;
+  const storageGB=(totalPerDay*300)/1073741824;
+  const tier=peakEPS>5000?'High-Range (48 CPU, 128 GB RAM)':peakEPS>1000?'Mid-Range (24 CPU, 64 GB RAM)':'Entry-Level (16 CPU, 32 GB RAM)';
+  document.getElementById('eps-val').textContent=avgEPS.toFixed(1)+' EPS';
+  document.getElementById('eps-peak-val').textContent=peakEPS.toFixed(1)+' EPS (peak)';
+  document.getElementById('eps-storage').textContent=storageGB.toFixed(2)+' GB/day';
+  document.getElementById('eps-tier').textContent=tier;
+}
+
+function buildChecklist(){
+  const items=[
+    {q:'How much bandwidth is available for log forwarding?',ok:true},
+    {q:'Is all device log data being collected — no gaps in coverage?',ok:true},
+    {q:'Is storage allocated sufficient for collected log volume?',ok:false},
+    {q:'Can the SIEM sustain the data volume without packet loss?',ok:true},
+    {q:'Is log retention period defined per regulatory requirement?',ok:false},
+    {q:'Are data privacy laws considered for employee activity logs?',ok:true},
+    {q:'Is incident reporting scope defined (compliance/security/ops)?',ok:true},
+    {q:'Is agent vs agentless collection decided for each source?',ok:false},
+  ];
+  document.getElementById('req-checklist').innerHTML=items.map(i=>`
+    <div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid rgba(30,45,69,.4);font-size:10px">
+      <span style="color:${i.ok?'var(--green)':'var(--red)'};font-size:12px">${i.ok?'&#10003;':'&#9744;'}</span>
+      <span style="color:${i.ok?'var(--text2)':'var(--orange)'}">${esc(i.q)}</span>
+    </div>`).join('');
+}
+
+// ── DEPLOYMENT ARCHITECTURES ──────────────────────────────────────────────────
+const ARCH_DATA=[
+  {name:'Self-Hosted, Self-Managed',tag:'In-House',tagColor:'var(--blue2)',
+   desc:'All components on-premise. Organization manages everything. Best visibility and control. Requires trained staff.',
+   pros:'Full data control, customizable rules, no third-party access, immediate response to issues',
+   cons:'High cost, requires expert staff, difficult to scale quickly',
+   layers:['Event Sources: In-house','Collection: In-house','Correlation: In-house','Visualization: In-house']},
+  {name:'Self-Hosted, MSSP Managed',tag:'In-House + MSSP',tagColor:'var(--purple)',
+   desc:'Hardware stays on-premise but MSSP handles all SIEM operations, monitoring, and analysis.',
+   pros:'No specialist staff needed, MSSP provides latest tech, off-site backup, 24/7 monitoring',
+   cons:'Trust third party with data, no rule customization, geographic constraints',
+   layers:['Event Sources: In-house','Collection: In-house','Correlation: MSSP','Visualization: MSSP']},
+  {name:'Self-Hosted, Jointly Managed',tag:'Hybrid',tagColor:'var(--teal)',
+   desc:'Hardware on-premise, operations shared between organization and MSSP. Flexible and collaborative.',
+   pros:'Customizable rules, shared expertise, flexible workload, reduced single-point dependency',
+   cons:'High combined cost, requires good communication, coordination overhead',
+   layers:['Event Sources: In-house','Collection: In-house','Correlation: Joint','Visualization: Joint']},
+  {name:'Cloud, MSSP Managed',tag:'Cloud + MSSP',tagColor:'var(--orange)',
+   desc:'Only event sources remain on-premise. All SIEM infrastructure and management is cloud + MSSP.',
+   pros:'Minimal hardware, less maintenance, MSSP scales automatically',
+   cons:'Very high cost, no customization, trust third party, data sovereignty concerns',
+   layers:['Event Sources: In-house','Collection: Cloud/MSSP','Correlation: Cloud/MSSP','Visualization: MSSP']},
+  {name:'Cloud, Jointly Managed',tag:'Cloud + Joint',tagColor:'var(--indigo)',
+   desc:'Cloud infrastructure for log processing with joint organization and MSSP management.',
+   pros:'Cloud scalability, shared expertise, data in cloud = secure and accessible',
+   cons:'High cost, coordination required, trusting cloud + MSSP simultaneously',
+   layers:['Event Sources: In-house','Collection: Joint','Correlation: Joint','Visualization: Joint']},
+  {name:'Hybrid, Jointly Managed',tag:'Best Practice',tagColor:'var(--green)',
+   desc:'Best of both worlds: on-premise for sensitive data + cloud for scale, jointly managed. Recommended for organizations that already have a SIEM and want to improve it.',
+   pros:'Most flexible, economical long-term, rapid response, validates threat management, customizable',
+   cons:'Complex setup, requires mature security team, coordination overhead',
+   layers:['Event Sources: In-house','Collection: In-house + Cloud','Correlation: Joint','Visualization: Joint']},
+];
+
+function buildArch(){
+  document.getElementById('arch-grid').innerHTML=ARCH_DATA.map(a=>`
+    <div class="arch-card">
+      <span class="arch-tag" style="background:${a.tagColor}18;color:${a.tagColor};border:1px solid ${a.tagColor}30">${esc(a.tag)}</span>
+      <div class="arch-name">${esc(a.name)}</div>
+      <div class="arch-desc">${esc(a.desc)}</div>
+      <div style="font-size:9px;color:var(--green);font-weight:700;margin-bottom:3px">PROS</div>
+      <div style="font-size:10px;color:var(--text2);margin-bottom:6px">${esc(a.pros)}</div>
+      <div style="font-size:9px;color:var(--red);font-weight:700;margin-bottom:3px">CONS</div>
+      <div style="font-size:10px;color:var(--text2);margin-bottom:8px">${esc(a.cons)}</div>
+      <div class="arch-layers">${a.layers.map(l=>`
+        <div class="arch-layer ${l.includes('MSSP')?'al-mssp':l.includes('Cloud')?'al-cloud':l.includes('Joint')?'al-joint':'al-in'}">${esc(l)}</div>`).join('')}
+      </div>
+    </div>`).join('');
+}
+
+// ── CONTROLS ─────────────────────────────────────────────────────────────────
+function injectEvent(){const log=mkLog();renderDashboard();renderLogTable();renderAlerts();}
+function refreshAll(){for(let i=0;i<rnd(1,4);i++) mkLog();renderDashboard();renderLogTable();renderAlerts();}
+function exportLogs(){alert('Exported '+CNT.total+' events — siem-day9-'+new Date().toISOString().slice(0,10)+'.csv');}
+function globalSearch(){
+  const q=document.getElementById('gsearch').value;
+  if(q.length>2){document.getElementById('log-filter').value=q;swPage('logview',null);filterLogs();}
+}
+
+// ── INIT ─────────────────────────────────────────────────────────────────────
+window.onload=function(){
+  seed();
+  renderDashboard();
+  buildLvSources();
+  renderLogTable();
+  renderAlerts();
+  buildDetEngine();
+  buildContextData();
+  buildArch();
+  calcEPS();
+  buildChecklist();
+  setInterval(()=>{if(Math.random()<0.5){mkLog();renderDashboard();if(document.getElementById('pg-logview').classList.contains('on')) renderLogTable();}},3500);
+};
+</script>
+</body>
+</html>
